@@ -1,13 +1,13 @@
-# Snakemake workflow: `<name>`
+# Snakemake workflow: read-alignment-pangenome
 
 [![Snakemake](https://img.shields.io/badge/snakemake-≥8.0.0-brightgreen.svg)](https://snakemake.github.io)
-[![GitHub actions status](https://github.com/<owner>/<repo>/workflows/Tests/badge.svg?branch=main)](https://github.com/<owner>/<repo>/actions?query=branch%3Amain+workflow%3ATests)
+[![GitHub actions status](https://github.com/snakemake-workflows/read-alignment-pangenome/workflows/Tests/badge.svg?branch=main)](https://github.com/snakemake-workflows/read-alignment-pangenome/actions?query=branch%3Amain+workflow%3ATests)
 [![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
-[![workflow catalog](https://img.shields.io/badge/Snakemake%20workflow%20catalog-darkgreen)](https://snakemake.github.io/snakemake-workflow-catalog/docs/workflows/<owner>/<repo>)
+[![workflow catalog](https://img.shields.io/badge/Snakemake%20workflow%20catalog-darkgreen)](https://snakemake.github.io/snakemake-workflow-catalog/docs/workflows/snakemake-workflows/read-alignment-pangenome)
 
-A Snakemake workflow for `<description>`
+A Snakemake workflow for aligning sequencing reads to a pangenome.
 
-- [Snakemake workflow: `<name>`](#snakemake-workflow-name)
+- [Snakemake workflow: read-alignment-pangenome](#snakemake-workflow-name)
   - [Usage](#usage)
   - [Deployment options](#deployment-options)
   - [Workflow profiles](#workflow-profiles)
@@ -17,7 +17,7 @@ A Snakemake workflow for `<description>`
 
 ## Usage
 
-The usage of this workflow is described in the [Snakemake Workflow Catalog](https://snakemake.github.io/snakemake-workflow-catalog/docs/workflows/<owner>/<repo>).
+The usage of this workflow is described in the [Snakemake Workflow Catalog](https://snakemake.github.io/snakemake-workflow-catalog/docs/workflows/snakemake-workflows/read-alignment-pangenome).
 
 Detailed information about input data and workflow configuration can also be found in the [`config/README.md`](config/README.md).
 
@@ -28,7 +28,7 @@ If you use this workflow in a paper, don't forget to give credits to the authors
 To run the workflow from command line, change the working directory.
 
 ```bash
-cd path/to/snakemake-workflow-name
+cd path/to/read-alignment-pangenome
 ```
 
 Adjust options in the default config file `config/config.yaml`.
