@@ -69,9 +69,7 @@ The [profiles `README.md`](profiles/README.md) provides more details.
 
 ## TODO
 
-- Replace `<owner>` and `<repo>` everywhere in the template with the correct user name/organization, and the repository name. The workflow will be automatically added to the [snakemake workflow catalog](https://snakemake.github.io/snakemake-workflow-catalog/index.html) once it is publicly available on Github.
-- Replace `<name>` with the workflow name (can be the same as `<repo>`).
-- Replace `<description>` with a description of what the workflow does.
+
 - Update the [deployment](#deployment-options), [authors](#authors) and [references](#references) sections.
 - Update the `README.md` badges. Add or remove badges for `conda`/`singularity`/`apptainer` usage depending on the workflow's [deployment](#deployment-options) options.
-- Do not forget to also adjust the configuration-specific `config/README.md` file.
+
