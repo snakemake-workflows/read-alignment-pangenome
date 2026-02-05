@@ -7,7 +7,7 @@
 
 A Snakemake workflow for aligning sequencing reads to a pangenome.
 
-- [Snakemake workflow: read-alignment-pangenome](#snakemake-workflow-name)
+- [Snakemake workflow: read-alignment-pangenome](#snakemake-workflow-read-alignment-pangenome)
   - [Usage](#usage)
   - [Deployment options](#deployment-options)
   - [Workflow profiles](#workflow-profiles)

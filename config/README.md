@@ -14,4 +14,4 @@ Input data requirements will be documented here once the expected input format (
 
 ### Parameters
 
-This section is not finalized yet, therefore it will be updated once the workflow interface is stable.                      |
+This section is not finalized yet, therefore it will be updated once the workflow interface is stable.            
