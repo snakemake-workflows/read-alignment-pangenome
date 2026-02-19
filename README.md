@@ -5,7 +5,8 @@
 [![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
 [![workflow catalog](https://img.shields.io/badge/Snakemake%20workflow%20catalog-darkgreen)](https://snakemake.github.io/snakemake-workflow-catalog/docs/workflows/snakemake-workflows/read-alignment-pangenome)
 
-A Snakemake workflow for aligning sequencing reads to a pangenome.
+A Snakemake workflow for aligning sequencing reads to a pangenome graph with **vg giraffe**, producing **sorted CRAM + CRAI** per sample.
+
 
 - [Snakemake workflow: read-alignment-pangenome](#snakemake-workflow-read-alignment-pangenome)
   - [Usage](#usage)
@@ -19,9 +20,20 @@ A Snakemake workflow for aligning sequencing reads to a pangenome.
 
 The usage of this workflow is described in the [Snakemake Workflow Catalog](https://snakemake.github.io/snakemake-workflow-catalog/docs/workflows/snakemake-workflows/read-alignment-pangenome).
 
-Detailed information about input data and workflow configuration can also be found in the [`config/README.md`](config/README.md).
+Detailed information about input data and workflow configuration can also be found in [`config/README.md`](config/README.md).
 
-If you use this workflow in a paper, don't forget to give credits to the authors by citing the URL of this repository or its DOI.
+**Main target and outputs**
+
+The main alignment target is:
+
+- `only_alignment`
+
+Expected outputs (per sample):
+
+- `<results>/mapped/vg/{sample}.sorted.cram`
+- `<results>/mapped/vg/{sample}.sorted.cram.crai`
+
+> Note: If `adapters` is empty/NA in `units.tsv`, trimming with fastp is bypassed and raw reads are used.
 
 ## Deployment options
 
@@ -35,20 +47,19 @@ Adjust options in the default config file `config/config.yaml`.
 Before running the complete workflow, you can perform a dry run using:
 
 ```bash
-snakemake --dry-run
+snakemake -n --cores 1 --use-conda only_alignment
 ```
 
-To run the workflow with test files using **conda**:
+To run the workflow with **conda**:
 
 ```bash
-snakemake --cores 2 --sdm conda --directory .test
+snakemake --cores 2 --use-conda only_alignment
 ```
 
-To run the workflow with **apptainer** / **singularity**, add a link to a container registry in the `Snakefile`, for example `container: "oras://ghcr.io/<user>/<repository>:<version>"` for Github's container registry.
-Run the workflow with:
+To run the workflow with **apptainer** / **singularity** (optional), if containers are configured (e.g., via a workflow profile and/or rule-level `container:` directives):
 
 ```bash
-snakemake --cores 2 --sdm conda apptainer --directory .test
+snakemake --cores 2 --use-conda --use-apptainer only_alignment
 ```
 
 ## Workflow profiles

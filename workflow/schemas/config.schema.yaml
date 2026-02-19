@@ -1,29 +1,71 @@
-$schema: "https://json-schema.org/draft/2020-12/schema"
-description: main configuration schema for the workflow
+$schema: "http://json-schema.org/draft-07/schema#"
+
+description: MINI workflow configuration file (trim + vg mapping + primers + QC)
+
+type: object
+
 properties:
-  sample_sheet:
+  samples:
     type: string
-    description: path to sample-sheet TSV file
 
-  get_genome:
+  units:
+    type: string
+
+  ref:
     type: object
     properties:
-      ncbi_ftp:
+      species:
         type: string
-        description: URL for genome retrieval
-    required: ["ncbi_ftp"]
+      release:
+        type: integer
+      build:
+        type: string
+      pangenome:
+        type: object
+        properties:
+          activate:
+            type: boolean
+          source:
+            type: string
+          version:
+            type: string
+        required:
+          - activate
+          - source
+          - version
+    required:
+      - species
+      - release
+      - build
+      - pangenome
 
-  simulate_reads:
+  primers:
     type: object
     properties:
-      read_length:
-        type: number
-        description: length of target reads in bp
-      read_number:
-        type: number
-        description: number of total reads to be simulated
+      trimming:
+        type: object
+        properties:
+          primers_fa1:
+            type: string
+          primers_fa2:
+            type: string
+          tsv:
+            type: string
+          library_length:
+            type: integer
+        required:
+          - tsv
+    required:
+      - trimming
+
+  params:
+    type: object
+    properties:
+      fastp:
+        type: string
 
 required:
-  - sample_sheet
-  - get_genome
-  - simulate_reads
+  - samples
+  - units
+  - ref
+  - primers

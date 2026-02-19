@@ -1,8 +1,44 @@
-sample_sheet: ".test/config/samples.tsv"
+# MINI workflow config (derived from dna-seq-varlociraptor)
+# Scope: pangenome download → trimming → vg giraffe mapping → postprocess → CRAM+CRAI
 
-get_genome:
-  ncbi_ftp: https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/146/045/GCF_000146045.2_R64/GCF_000146045.2_R64_genomic.fna.gz
+samples: config/samples.tsv
 
-simulate_reads:
-  read_length: 100
-  read_number: 10000
+units: config/units.tsv
+
+ref:
+  # Number of chromosomes to consider for calling.
+  # The first n entries of the FASTA will be considered.
+  n_chromosomes: 25
+  # Ensembl species name
+  species: homo_sapiens
+  # Ensembl release
+  release: 111
+  # Genome build
+  build: GRCh38
+  pangenome:
+    # if active, reads will be aligned to given pangenome instead of to the linear reference genome
+    # Important: this is only supported for homo_sapiens so far
+    activate: true
+    # Pangenome source and version: Only 'hprc' and v1.1 are supported for now.
+    # see https://github.com/human-pangenomics/hpp_pangenome_resources/?tab=readme-ov-file#minigraph-cactus for details
+    source: hprc
+    version: v1.1
+
+
+# Trimming will be applied if global primer sequences are
+# provided or primer panels are set in samplesheet
+primers:
+  trimming:
+    # path to fasta files containing primer sequences
+    primers_fa1: ""
+    primers_fa2: ""
+    # optional primer file allowing to define primers per sample
+    # overwrites primers_fa1 and primers_fa2
+    # the tsv file requires three fields: panel, fa1 and fa2 (optional)
+    tsv: ""
+    # Mean insert size between the outer primer ends.
+    # If 0 or not set the bowtie default value of 250 will be used
+    library_length: 0
+
+params:
+  fastp: ""
