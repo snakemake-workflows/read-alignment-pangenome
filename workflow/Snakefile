@@ -20,13 +20,6 @@ wildcard_constraints:
 configfile: "config/config.yaml"
 
 
-# path variables (Snakemake 9.x)
-# -----------------------------------------------------
-pathvars:
-    results="results",
-    resources="resources",
-
-
 # load rules
 # -----------------------------------------------------
 include: "rules/common.smk"
