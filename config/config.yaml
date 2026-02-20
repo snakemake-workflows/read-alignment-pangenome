@@ -1,9 +1,12 @@
-# MINI workflow config (derived from dna-seq-varlociraptor)
+# Workflow config (derived from dna-seq-varlociraptor)
 # Scope: pangenome download → trimming → vg giraffe mapping → postprocess → CRAM+CRAI
 
 samples: config/samples.tsv
-
 units: config/units.tsv
+
+# Threads used by KMC (k-mer counting)
+# (Used by rule count_sample_kmers via config.get("kmc_threads", 8))
+kmc_threads: 16
 
 ref:
   # Number of chromosomes to consider for calling.
@@ -23,7 +26,8 @@ ref:
     # see https://github.com/human-pangenomics/hpp_pangenome_resources/?tab=readme-ov-file#minigraph-cactus for details
     source: hprc
     version: v1.1
-
+    # Optional: override pangenome download base URL (defaults to upstream S3 root if not set)
+    # base_url: "https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus"
 
 # Trimming will be applied if global primer sequences are
 # provided or primer panels are set in samplesheet
@@ -35,10 +39,15 @@ primers:
     # optional primer file allowing to define primers per sample
     # overwrites primers_fa1 and primers_fa2
     # the tsv file requires three fields: panel, fa1 and fa2 (optional)
-    tsv: ""
+    tsv: "config/primers.tsv"
     # Mean insert size between the outer primer ends.
     # If 0 or not set the bowtie default value of 250 will be used
     library_length: 0
 
 params:
-  fastp: ""
+  fastp: "--detect_adapter_for_pe"
+
+# Kept for compatibility; not used by count_sample_kmers if you switched to kmc_threads.
+threads:
+  kmc: 16
+

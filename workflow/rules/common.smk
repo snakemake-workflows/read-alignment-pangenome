@@ -36,9 +36,6 @@ pangenome_prefix = f"<resources>/{pangenome_name}"
 
 # cram variables (mini-workflow: CRAM is mandatory)
 use_cram = True
-alignmend_ending = "cram"
-alignmend_index_ending = "crai"
-alignmend_ending_index_ending = "cram.crai"
 
 def _group_or_sample(row):
     group = row.get("group", None)
@@ -65,19 +62,17 @@ units = (
 validate(units, schema="../schemas/units.schema.yaml")
 
 primer_panels = (
-    (
-        pd.read_csv(
-            config["primers"]["trimming"]["tsv"],
-            sep="\t",
-            dtype={"panel": str, "fa1": str, "fa2": str},
-            comment="#",
-        )
-        .set_index(["panel"], drop=False)
-        .sort_index()
+    pd.read_csv(
+        config["primers"]["trimming"]["tsv"],
+        sep="\t",
+        dtype={"panel": str, "fa1": str, "fa2": str},
+        comment="#",
     )
-    if config["primers"]["trimming"].get("tsv", "")
-    else None
+    .set_index(["panel"], drop=False)
+    .sort_index()
 )
+if primer_panels.empty:
+    primer_panels = None
 
 def is_activated(xpath):
     c = config
@@ -191,14 +186,14 @@ def is_paired_end(sample):
 def get_map_reads_input(wildcards):
     if is_paired_end(wildcards.sample):
         return [
-            "<results>/merged/{sample}_R1.fastq.gz",
-            "<results>/merged/{sample}_R2.fastq.gz",
+            f"<results>/merged/{wildcards.sample}_R1.fastq.gz",
+            f"<results>/merged/{wildcards.sample}_R2.fastq.gz",
         ]
-    return "<results>/merged/{sample}_single.fastq.gz"
+    return f"<results>/merged/{wildcards.sample}_single.fastq.gz"
 
 def get_trimming_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
-    return f"<results>/mapped/vg/{{sample}}.sorted.{ext}"
+    return f"<results>/mapped/vg/{wildcards.sample}.sorted.{ext}"
 
 def get_primer_bed(wc):
     if isinstance(primer_panels, pd.DataFrame):
@@ -217,16 +212,17 @@ def extract_unique_sample_column_value(sample, col_name):
     if type(result) is not str:
         if len(result) > 1:
             raise ValueError(
-                "If a sample is specified multiple times in a samples.tsv"
-                "sheet, all columns except 'group' must contain identical"
+                "If a sample is specified multiple times in a samples.tsv "
+                "sheet, all columns except 'group' must contain identical "
                 "entries across the occurrences (rows).\n"
-                f"Here we have sample '{sample}' with multiple entries for"
+                f"Here we have sample '{sample}' with multiple entries for "
                 f"the '{col_name}' column, namely:\n"
                 f"{result}\n"
             )
         else:
             result = result.squeeze()
     return result
+
 
 def get_sample_primer_fastas(sample):
     if isinstance(primer_panels, pd.DataFrame):
@@ -277,7 +273,7 @@ def get_read_group(prefix: str):
         return r"{prefix}'@RG\tID:{sample}\tSM:{sample}\tPL:{platform}'".format(
             sample=wildcards.sample, platform=platform, prefix=prefix
         )
-
+        
     return inner
 
 def get_trimmed_fastqs(wc):
@@ -337,11 +333,14 @@ def get_shortest_primer_length(primers):
     # set to 32 to match bwa-mem default value considering offset of 2
     min_length = 32
     for primer_file in primers:
-        with open(primer_file, "r") as p:
-            min_primer = min(
-                [len(p.strip()) for i, p in enumerate(p.readlines()) if i % 2 == 1]
-            )
-            min_length = min(min_length, min_primer)
+        with open(primer_file, "r") as primer_f:
+            lines = primer_f.readlines()
+        min_primer = min(
+            len(line.strip())
+            for i, line in enumerate(lines)
+            if i % 2 == 1
+        )
+        min_length = min(min_length, min_primer)
     return min_length
 
 def get_primer_extra(wc, input):
@@ -349,10 +348,11 @@ def get_primer_extra(wc, input):
     min_primer_len = get_shortest_primer_length(input.reads)
     # Check if shortest primer is below default values
     if min_primer_len < 32:
-        extra += f" -T {min_primer_len-2}"
+        extra += f" -T {max(1, min_primer_len - 2)}"
     if min_primer_len < 19:
         extra += f" -k {min_primer_len}"
     return extra
+
 
 def get_fastqc_results(wildcards):
     group_samples = get_group_samples(wildcards.group)
@@ -379,13 +379,13 @@ def get_fastqc_results(wildcards):
 
     # samtools idxstats (CRAM)
     yield from expand(
-        "<results>/qc/{sample}.cram.idxstats",
+        f"<results>/qc/{wildcards.sample}.cram.idxstats",
         sample=group_samples,
     )
 
     # samtools stats (CRAM)
     yield from expand(
-        "<results>/qc/{sample}.cram.stats",
+        f"<results>/qc/{wildcards.sample}.cram.stats",
         sample=group_samples,
     )
 
@@ -401,4 +401,10 @@ def get_pangenome_url(datatype):
         raise ValueError(
             "Unsupported pangenome source. Only 'hprc' is currently supported."
         )
-    return f"https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus/hprc-{version}-mc-{build}/hprc-{version}-mc-{build}.{datatype}"
+
+    base_url = config["ref"]["pangenome"].get(
+        "base_url",
+        "https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus",
+    )
+
+    return f"{base_url}/hprc-{version}-mc-{build}/hprc-{version}-mc-{build}.{datatype}"

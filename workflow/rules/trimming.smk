@@ -7,7 +7,6 @@ rule get_sra:
     wrapper:
         "v7.6.0/bio/sra-tools/fasterq-dump"
 
-
 rule fastp_pipe:
     input:
         get_fastp_pipe_input,
@@ -18,9 +17,10 @@ rule fastp_pipe:
     wildcard_constraints:
         ext=r"fastq|fastq\.gz",
     threads: 0
+    conda:
+        "../envs/coreutils.yaml"
     shell:
         "cat {input} > {output} 2> {log}"
-
 
 rule fastp_se:
     input:
@@ -36,8 +36,7 @@ rule fastp_se:
         extra=get_fastp_extra,
     threads: 8
     wrapper:
-        "v6.2.0/bio/fastp"
-
+        "v7.6.0/bio/fastp"
 
 rule fastp_pe:
     input:
@@ -56,8 +55,7 @@ rule fastp_pe:
         extra=get_fastp_extra,
     threads: 8
     wrapper:
-        "v6.2.0/bio/fastp"
-
+        "v7.6.0/bio/fastp"
 
 rule merge_trimmed_fastqs:
     input:
@@ -68,5 +66,7 @@ rule merge_trimmed_fastqs:
         "<results>/logs/merge-fastqs/trimmed/{sample}_{read}.log",
     wildcard_constraints:
         read="single|R1|R2",
+    conda:
+        "../envs/coreutils.yaml"
     shell:
         "cat {input} > {output} 2> {log}"

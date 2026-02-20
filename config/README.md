@@ -1,6 +1,8 @@
 # General settings
 To configure this workflow, modify `config/config.yaml` according to your needs, following the explanations provided in the file.
 
+This workflow uses Snakemake pathvars like `<results>/` and `<resources>/` in rule outputs/logs.
+
 This mini-workflow is derived from `snakemake-workflows/dna-seq-varlociraptor` and focuses on:
 - reference + optional pangenome resource preparation
 - read preprocessing/merging
@@ -13,7 +15,7 @@ Variant calling, annotation, filtering, and reporting are intentionally out of s
 
 Add samples to `config/samples.tsv`. For each sample, the columns `sample_name`, `platform` and `group` have to be defined.
 * Samples within the same `group` can be treated as belonging together for aggregation logic that is retained from upstream.
-* The `platform` column needs to contain the used sequencing platform (one of 'CAPILLARY', 'LS454', 'ILLUMINA', 'SOLID', 'HELICOS', 'IONTORRENT', 'ONT', 'PACBIO’). This is required because the workflow adds read groups during alignment postprocessing.
+* The `platform` column needs to contain the used sequencing platform (one of 'CAPILLARY', 'LS454', 'ILLUMINA', 'SOLID', 'HELICOS', 'IONTORRENT', 'ONT', 'PACBIO'). This is required because the workflow adds read groups during alignment postprocessing.
 * Optionally, a `panel` column can be provided. This is only relevant if primer trimming is enabled panel-wise (see [Primer trimming](#primer-trimming)); the value links a sample to a primer panel definition.
 * Optionally, the columns `umi_read` and `umi_len` can be provided to enable UMI annotation (see [Annotating UMIs](#annotating-umis)).
   * `umi_read` can be `fq1`, `fq2` or `both`.
@@ -54,7 +56,7 @@ or primer panels are set in the sample sheet (column `panel`).
 
 Primers can be defined either:
 
-- directly in `config/config.yaml` (`primers.trimming.primers_fa1` / `primers_fa2`), or
+- directly in `config/config.yaml` (`primers.trimming.primers_fa1` / `primers.trimming.primers_fa2`), or
 - via a separate TSV file (`primers.trimming.tsv`) with columns: `panel`, `fa1`, `fa2` (optional).
 
 If a panel is not provided for a sample, primer trimming will not be performed for that sample.
@@ -72,6 +74,3 @@ To enable it, add the following columns to `config/samples.tsv`:
   - `fq2` if the UMIs are part of read 2
   - `both` if there are UMIs in both paired-end reads
 - `umi_len`: number of bases (UMI length) to be annotated as UMI.
-
-
-

@@ -22,7 +22,7 @@ rule genome_faidx:
         "<results>/logs/genome-faidx.log",
     cache: "omit-software"
     wrapper:
-        "v2.3.2/bio/samtools/faidx"
+        "v8.1.1/bio/samtools/faidx"
 
 rule genome_dict:
     input:
@@ -35,7 +35,7 @@ rule genome_dict:
         "../envs/samtools.yaml"
     cache: "omit-software"
     shell:
-        "samtools dict {input} > {output} 2> {log} "
+        "samtools dict {input} > {output} 2> {log}"
 
 rule bwa_index:
     input:
@@ -46,7 +46,7 @@ rule bwa_index:
         "<results>/logs/bwa_index.log",
     cache: True
     wrapper:
-        "v2.3.2/bio/bwa/index"
+        "v8.1.1/bio/bwa/index"
 
 rule get_pangenome:
     output:
@@ -58,5 +58,8 @@ rule get_pangenome:
     log:
         "<results>/logs/pangenome/{ext}.log",
     cache: "omit-software"
+    conda:
+        "../envs/curl.yaml"
     shell:
         "curl -o {output} {params.url} 2> {log}"
+

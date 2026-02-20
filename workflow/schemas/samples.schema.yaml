@@ -1,5 +1,7 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
-description: an entry in the sample sheet (MINI workflow)
+
+description: an entry in the sample sheet for the read-alignment-pangenome workflow
+
 
 type: object
 properties:
@@ -29,4 +31,3 @@ properties:
 
 required:
   - sample_name
-  - primer_panel

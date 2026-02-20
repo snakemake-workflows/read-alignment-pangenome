@@ -1,6 +1,6 @@
-$schema: "http://json-schema.org/draft-07/schema#"
+$schema: "https://json-schema.org/draft/2020-12/schema"
 
-description: MINI workflow configuration file (trim + vg mapping + primers + QC)
+description: read-alignment-pangenome workflow configuration (pangenome download + trimming + vg giraffe mapping + postprocessing + CRAM + QC)
 
 type: object
 
@@ -10,6 +10,18 @@ properties:
 
   units:
     type: string
+
+  kmc_threads:
+    type: integer
+    minimum: 1
+    maximum: 128
+    default: 8
+
+  threads:
+    type: object
+    properties:
+      kmc:
+        type: integer
 
   ref:
     type: object
@@ -63,9 +75,12 @@ properties:
     properties:
       fastp:
         type: string
+    required:
+      - fastp
 
 required:
   - samples
   - units
   - ref
   - primers
+  - params

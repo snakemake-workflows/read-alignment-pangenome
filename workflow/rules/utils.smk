@@ -4,8 +4,6 @@ rule bam_index:
     output:
         "{prefix}.bai",
     log:
-        "<results>/logs/bam-index/{prefix}.log",
+        "results/logs/bam-index/{prefix}.log",
     wrapper:
-        "v2.3.2/bio/samtools/index"
-
-
+        "v8.1.1/bio/samtools/index"

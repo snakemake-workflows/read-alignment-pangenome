@@ -11,11 +11,11 @@ rule fastqc:
     wrapper:
         "v2.10.0/bio/fastqc"
 
-
 rule samtools_idxstats_cram:
     input:
         cram="<results>/mapped/vg/{sample}.sorted.cram",
         crai="<results>/mapped/vg/{sample}.sorted.cram.crai",
+        ref=genome,
     output:
         "<results>/qc/{sample}.cram.idxstats",
     log:
@@ -26,10 +26,10 @@ rule samtools_idxstats_cram:
     shell:
         "samtools idxstats {input.cram} > {output} 2> {log}"
 
-
 rule samtools_stats_cram:
     input:
         cram="<results>/mapped/vg/{sample}.sorted.cram",
+        ref=genome,
     output:
         "<results>/qc/{sample}.cram.stats",
     log:
@@ -38,8 +38,7 @@ rule samtools_stats_cram:
         "../envs/samtools.yaml"
     threads: 2
     shell:
-        "samtools stats -@ {threads} {input.cram} > {output} 2> {log}"
-
+        "samtools stats -@ {threads} -T {input.ref} {input.cram} > {output} 2> {log}"
 
 rule multiqc:
     input:

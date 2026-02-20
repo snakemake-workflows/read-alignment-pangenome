@@ -5,26 +5,29 @@ rule count_sample_kmers:
         "<results>/kmers/{sample}.kff",
     params:
         out_file=lambda wc, output: os.path.splitext(output[0])[0],
-        mem=lambda wc, resources: resources.mem[:-2],
+        mem=lambda wc, resources: int(resources.mem_gb),
     conda:
         "../envs/kmc.yaml"
     shadow:
         "minimal"
     log:
         "<results>/logs/kmers/{sample}.log",
-    threads: min(max(workflow.cores, 1), 128)  # kmc can use 128 threads at most
+    threads: min(int(config.get("kmc_threads", 8)), 128)
     resources:
-        mem="64GB",
+        mem_gb=64,
     shell:
         "tmpdir=$(mktemp -d); "
-        "kmc -k29 -m{params.mem} -sm -okff -t{threads} -v @<(ls {input.reads}) {params.out_file} $tmpdir &> {log} && "
-        "rm -r $tmpdir || (rm -r $tmpdir && exit 1)"
+        "trap 'rm -rf \"$tmpdir\"' EXIT; "
+        "kmc -k29 -m{params.mem} -sm -okff -t{threads} -v {input.reads} "
+        "\"{params.out_file}\" \"$tmpdir\" &> {log}"
 
 rule create_reference_paths:
     output:
         "<resources>/reference_paths.txt",
     params:
         build=config["ref"]["build"],
+    conda:
+        "../envs/coreutils.yaml"
     log:
         "<results>/logs/reference/paths.log",
     shell:
@@ -66,7 +69,6 @@ rule reheader_mapped_reads:
         "sed -E 's/(SN:{params.build}#0#chr)/SN:/; s/SN:M/SN:MT/' | "
         "samtools reheader - {input} > {output}) 2> {log}"
 
-
 rule fix_mate:
     input:
         "<results>/mapped/vg/{sample}.reheadered.bam",
@@ -76,7 +78,7 @@ rule fix_mate:
         "<results>/logs/samtools/fix_mate/{sample}.log",
     threads: 8
     wrapper:
-        "v4.7.2/bio/samtools/fixmate"
+        "v8.1.1/bio/samtools/fixmate"
 
 # adding read groups is exclusive to vg mapped reads and
 # necessary because base recalibration throws errors
@@ -91,16 +93,14 @@ rule add_read_group:
     params:
         read_group=get_read_group(""),
         compression_threads=lambda wildcards, threads: (
-            f"-@{threads}" if threads > 1 else ""
+            f"-@ {threads}" if threads > 1 else ""
         ),
     conda:
         "../envs/samtools.yaml"
     threads: 4
     shell:
-        "samtools addreplacerg {input} -o {output} -r {params.read_group} "
-        "-w {params.compression_threads} 2> {log}"
-
-
+        "samtools addreplacerg {params.compression_threads} {input} -o {output} -r {params.read_group} "
+        "2> {log}"
 
 rule sort_alignments:
     input:
@@ -114,7 +114,6 @@ rule sort_alignments:
         mem_mb=32000,
     wrapper:
         "v8.1.1/bio/samtools/sort"
-
 
 rule bam_to_cram:
     input:
@@ -130,8 +129,6 @@ rule bam_to_cram:
     threads: 4
     shell:
         "samtools view -@ {threads} -C -T {input.ref} -o {output} {input.bam} 2> {log}"
-
-
 
 rule cram_index:
     input:
