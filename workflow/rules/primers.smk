@@ -12,6 +12,7 @@ rule assign_primers:
     shell:
         "fgbio AssignPrimers -i {input.bam} -p {input.primers} -m {output.metric} -o {output.assigned} &> {log}"
 
+
 rule filter_primerless_reads:
     input:
         "<results>/primers/{sample}.assigned.bam",
@@ -24,6 +25,7 @@ rule filter_primerless_reads:
         "<results>/logs/primers/filter/{sample}.log",
     script:
         "../scripts/filter_primers.rs"
+
 
 rule trim_primers:
     input:
@@ -40,6 +42,7 @@ rule trim_primers:
         "<results>/logs/trimming/{sample}.log",
     shell:
         "fgbio TrimPrimers -H -i {input.bam} -p {input.primers} -s {params.sort_order} {params.single_primer} -o {output.trimmed} &> {log}"
+
 
 rule map_primers:
     input:
@@ -58,6 +61,7 @@ rule map_primers:
     wrapper:
         "v8.1.1/bio/bwa/mem"
 
+
 rule filter_unmapped_primers:
     input:
         "<results>/primers/{panel}_primers.bam",
@@ -69,6 +73,7 @@ rule filter_unmapped_primers:
         "<results>/logs/primers/{panel}_primers_filtered.log",
     wrapper:
         "v8.1.1/bio/samtools/view"
+
 
 rule primer_to_bed:
     input:
@@ -85,6 +90,7 @@ rule primer_to_bed:
         "../envs/bedtools.yaml"
     shell:
         "samtools sort -n {input} | bamToBed -i - {params.format} > {output} 2> {log}"
+
 
 rule build_primer_regions:
     input:

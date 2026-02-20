@@ -37,16 +37,20 @@ pangenome_prefix = f"<resources>/{pangenome_name}"
 # cram variables (mini-workflow: CRAM is mandatory)
 use_cram = True
 
+
 def _group_or_sample(row):
     group = row.get("group", None)
     if pd.isnull(group):
         return row["sample_name"]
     return group
 
+
 samples["group"] = [_group_or_sample(row) for _, row in samples.iterrows()]
+
 
 def get_group_samples(group):
     return samples.loc[samples["group"] == group]["sample_name"]
+
 
 units = (
     pd.read_csv(
@@ -74,11 +78,13 @@ primer_panels = (
 if primer_panels.empty:
     primer_panels = None
 
+
 def is_activated(xpath):
     c = config
     for entry in xpath.split("/"):
         c = c.get(entry, {})
     return bool(c.get("activate", False))
+
 
 def get_fastp_input(wildcards):
     unit = units.loc[wildcards.sample].loc[wildcards.unit]
@@ -106,11 +112,15 @@ def get_fastp_input(wildcards):
         # paired end sample
         return [get_reads("fq1"), get_reads("fq2")]
 
+
 def get_sra_reads(sample, unit, fq):
     unit = units.loc[sample].loc[unit]
     # SRA sample (always paired-end for now)
     accession = unit["sra"]
-    return expand("<resources>/sra/{accession}_{read}.fastq.gz", accession=accession, read=fq)
+    return expand(
+        "<resources>/sra/{accession}_{read}.fastq.gz", accession=accession, read=fq
+    )
+
 
 def get_raw_reads(sample, unit, fq):
     pattern = units.loc[sample].loc[unit, fq]
@@ -141,11 +151,14 @@ def get_raw_reads(sample, unit, fq):
         files = [pattern]
     return files
 
+
 def get_fastp_pipe_input(wildcards):
     return get_raw_reads(wildcards.sample, wildcards.unit, wildcards.fq)
 
+
 def get_fastqc_input(wildcards):
     return get_raw_reads(wildcards.sample, wildcards.unit, wildcards.fq)[0]
+
 
 def get_fastp_adapters(wildcards):
     unit = units.loc[wildcards.sample].loc[wildcards.unit]
@@ -162,12 +175,14 @@ def get_fastp_adapters(wildcards):
     except KeyError:
         return ""
 
+
 def get_fastp_extra(wildcards):
     extra = config["params"]["fastp"]
     if "umi_read" in samples.columns and "umi_len" in samples.columns:
         if sample_has_umis(wildcards.sample):
             extra += get_annotate_umis_params(wildcards)
     return extra
+
 
 def is_paired_end(sample):
     sample_units = units.loc[sample]
@@ -183,6 +198,7 @@ def is_paired_end(sample):
     )
     return all_paired
 
+
 def get_map_reads_input(wildcards):
     if is_paired_end(wildcards.sample):
         return [
@@ -191,9 +207,11 @@ def get_map_reads_input(wildcards):
         ]
     return f"<results>/merged/{wildcards.sample}_single.fastq.gz"
 
+
 def get_trimming_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     return f"<results>/mapped/vg/{wildcards.sample}.sorted.{ext}"
+
 
 def get_primer_bed(wc):
     if isinstance(primer_panels, pd.DataFrame):
@@ -206,6 +224,7 @@ def get_primer_bed(wc):
             return "<results>/primers/uniform_primers.bedpe"
         else:
             return "<results>/primers/uniform_primers.bed"
+
 
 def extract_unique_sample_column_value(sample, col_name):
     result = samples.loc[samples["sample_name"] == sample, col_name].drop_duplicates()
@@ -241,6 +260,7 @@ def get_sample_primer_fastas(sample):
             ]
         return config["primers"]["trimming"]["primers_fa1"]
 
+
 def get_panel_primer_input(panel):
     if panel == "uniform":
         if config["primers"]["trimming"].get("primers_fa2", ""):
@@ -255,16 +275,19 @@ def get_panel_primer_input(panel):
             return [panel["fa1"], panel["fa2"]]
         return panel["fa1"]
 
+
 def input_is_fasta(primers):
     primers = primers[0] if isinstance(primers, list) else primers
     fasta_suffixes = ("fasta", "fa")
     return True if primers.endswith(fasta_suffixes) else False
+
 
 def get_primer_regions(wc):
     if isinstance(primer_panels, pd.DataFrame):
         panel = extract_unique_sample_column_value(wc.sample, "panel")
         return f"<results>/primers/{panel}_primer_regions.tsv"
     return "<results>/primers/uniform_primer_regions.tsv"
+
 
 def get_read_group(prefix: str):
     def inner(wildcards):
@@ -273,8 +296,9 @@ def get_read_group(prefix: str):
         return r"{prefix}'@RG\tID:{sample}\tSM:{sample}\tPL:{platform}'".format(
             sample=wildcards.sample, platform=platform, prefix=prefix
         )
-        
+
     return inner
+
 
 def get_trimmed_fastqs(wc):
     if units.loc[wc.sample, "adapters"].notna().all():
@@ -292,6 +316,7 @@ def get_trimmed_fastqs(wc):
             for read in get_raw_reads(wc.sample, unit, fq)
         ]
 
+
 def sample_has_primers(wildcards):
     sample_name = wildcards.sample
 
@@ -306,8 +331,10 @@ def sample_has_primers(wildcards):
         return True
     return False
 
+
 def sample_has_umis(sample):
     return pd.notna(extract_unique_sample_column_value(sample, "umi_read"))
+
 
 def get_annotate_umis_params(wildcards):
     translate_param = {"fq1": "read1", "fq2": "read2", "both": "per_read"}
@@ -318,15 +345,18 @@ def get_annotate_umis_params(wildcards):
         umi_len=str(extract_unique_sample_column_value(wildcards.sample, "umi_len")),
     )
 
+
 def get_filter_params(wc):
     if isinstance(get_panel_primer_input(wc.panel), list):
         return "-b -F 12"
     return "-b -F 4"
 
+
 def get_single_primer_flag(wc):
     if not isinstance(get_sample_primer_fastas(wc.sample), list):
         return "--first-of-pair"
     return ""
+
 
 def get_shortest_primer_length(primers):
     primers = primers if isinstance(primers, list) else [primers]
@@ -336,19 +366,18 @@ def get_shortest_primer_length(primers):
         with open(primer_file, "r") as primer_f:
             lines = primer_f.readlines()
         min_primer = min(
-            len(line.strip())
-            for i, line in enumerate(lines)
-            if i % 2 == 1
+            len(line.strip()) for i, line in enumerate(lines) if i % 2 == 1
         )
         min_length = min(min_length, min_primer)
     return min_length
+
 
 def get_primer_extra(wc, input):
     extra = rf"-R '@RG\tID:{wc.panel}\tSM:{wc.panel}' -L 100"
     min_primer_len = get_shortest_primer_length(input.reads)
     # Check if shortest primer is below default values
     if min_primer_len < 32:
-        extra += f" -T {max(1, min_primer_len - 2)}"
+        extra += f" -T {max(1, min_primer_len-2)}"
     if min_primer_len < 19:
         extra += f" -k {min_primer_len}"
     return extra
@@ -388,6 +417,7 @@ def get_fastqc_results(wildcards):
         f"<results>/qc/{wildcards.sample}.cram.stats",
         sample=group_samples,
     )
+
 
 def get_pangenome_url(datatype):
     build = config["ref"]["build"].lower()

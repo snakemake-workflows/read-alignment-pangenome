@@ -19,7 +19,8 @@ rule count_sample_kmers:
         "tmpdir=$(mktemp -d); "
         "trap 'rm -rf \"$tmpdir\"' EXIT; "
         "kmc -k29 -m{params.mem} -sm -okff -t{threads} -v {input.reads} "
-        "\"{params.out_file}\" \"$tmpdir\" &> {log}"
+        '"{params.out_file}" "$tmpdir" &> {log}'
+
 
 rule create_reference_paths:
     output:
@@ -33,6 +34,7 @@ rule create_reference_paths:
     shell:
         'for chrom in {{1..22}} X Y M; do echo "{params.build}#0#chr$chrom"; done > {output} 2> {log}'
 
+
 rule map_reads_vg:
     input:
         reads=get_map_reads_input,
@@ -45,13 +47,14 @@ rule map_reads_vg:
     log:
         "<results>/logs/mapped/vg/{sample}.log",
     benchmark:
-        "<results>/benchmarks/vg_giraffe/{sample}.tsv",
+        "<results>/benchmarks/vg_giraffe/{sample}.tsv"
     params:
         extra=lambda wc, input: f"--ref-paths {input.paths}",
         sorting="none",
     threads: 64
     wrapper:
         "v6.1.0/bio/vg/giraffe"
+
 
 rule reheader_mapped_reads:
     input:
@@ -69,6 +72,7 @@ rule reheader_mapped_reads:
         "sed -E 's/(SN:{params.build}#0#chr)/SN:/; s/SN:M/SN:MT/' | "
         "samtools reheader - {input} > {output}) 2> {log}"
 
+
 rule fix_mate:
     input:
         "<results>/mapped/vg/{sample}.reheadered.bam",
@@ -79,6 +83,7 @@ rule fix_mate:
     threads: 8
     wrapper:
         "v8.1.1/bio/samtools/fixmate"
+
 
 # adding read groups is exclusive to vg mapped reads and
 # necessary because base recalibration throws errors
@@ -102,6 +107,7 @@ rule add_read_group:
         "samtools addreplacerg {params.compression_threads} {input} -o {output} -r {params.read_group} "
         "2> {log}"
 
+
 rule sort_alignments:
     input:
         "<results>/mapped/vg/{sample}.bam",
@@ -114,6 +120,7 @@ rule sort_alignments:
         mem_mb=32000,
     wrapper:
         "v8.1.1/bio/samtools/sort"
+
 
 rule bam_to_cram:
     input:
@@ -129,6 +136,7 @@ rule bam_to_cram:
     threads: 4
     shell:
         "samtools view -@ {threads} -C -T {input.ref} -o {output} {input.bam} 2> {log}"
+
 
 rule cram_index:
     input:

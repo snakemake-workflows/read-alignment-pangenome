@@ -7,6 +7,7 @@ rule get_sra:
     wrapper:
         "v7.6.0/bio/sra-tools/fasterq-dump"
 
+
 rule fastp_pipe:
     input:
         get_fastp_pipe_input,
@@ -21,6 +22,7 @@ rule fastp_pipe:
         "../envs/coreutils.yaml"
     shell:
         "cat {input} > {output} 2> {log}"
+
 
 rule fastp_se:
     input:
@@ -37,6 +39,7 @@ rule fastp_se:
     threads: 8
     wrapper:
         "v7.6.0/bio/fastp"
+
 
 rule fastp_pe:
     input:
@@ -56,6 +59,7 @@ rule fastp_pe:
     threads: 8
     wrapper:
         "v7.6.0/bio/fastp"
+
 
 rule merge_trimmed_fastqs:
     input:

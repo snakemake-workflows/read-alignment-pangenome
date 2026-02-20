@@ -13,6 +13,7 @@ rule get_genome:
     wrapper:
         "v7.3.0/bio/reference/ensembl-sequence"
 
+
 rule genome_faidx:
     input:
         genome,
@@ -23,6 +24,7 @@ rule genome_faidx:
     cache: "omit-software"
     wrapper:
         "v8.1.1/bio/samtools/faidx"
+
 
 rule genome_dict:
     input:
@@ -37,6 +39,7 @@ rule genome_dict:
     shell:
         "samtools dict {input} > {output} 2> {log}"
 
+
 rule bwa_index:
     input:
         genome,
@@ -47,6 +50,7 @@ rule bwa_index:
     cache: True
     wrapper:
         "v8.1.1/bio/bwa/index"
+
 
 rule get_pangenome:
     output:
@@ -62,4 +66,3 @@ rule get_pangenome:
         "../envs/curl.yaml"
     shell:
         "curl -o {output} {params.url} 2> {log}"
-

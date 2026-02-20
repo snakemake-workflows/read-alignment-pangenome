@@ -9,20 +9,23 @@ from snakemake.utils import min_version
 
 min_version("9.1.0")
 
+
 # prevent {sample} from swallowing suffixes like ".sorted"
 wildcard_constraints:
-    sample = r"[^\.\/]+"
+    sample=r"[^\.\/]+",
 
 
 # load configuration
 # -----------------------------------------------------
 configfile: "config/config.yaml"
 
+
 # path variables (Snakemake 9.x)
 # -----------------------------------------------------
 pathvars:
     results="results",
-    resources="resources"
+    resources="resources",
+
 
 # load rules
 # -----------------------------------------------------
@@ -32,7 +35,6 @@ include: "rules/trimming.smk"
 include: "rules/mapping.smk"
 include: "rules/primers.smk"
 include: "rules/qc.smk"
-
 
 
 # optional messages, log and error handling
@@ -54,11 +56,12 @@ onerror:
 rule only_alignment:
     input:
         expand("<results>/mapped/vg/{sample}.sorted.cram", sample=list(samples.index)),
-        expand("<results>/mapped/vg/{sample}.sorted.cram.crai", sample=list(samples.index)),
+        expand(
+            "<results>/mapped/vg/{sample}.sorted.cram.crai", sample=list(samples.index)
+        ),
+
 
 rule all:
     input:
         rules.only_alignment.input,
     default_target: True
-
-
