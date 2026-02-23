@@ -1,0 +1,2 @@
+sample_name	unit_name	fq1	fq2	sra	adapters
+test	testunit	data/test_R1.fastq.gz	data/test_R2.fastq.gz		auto_trim
