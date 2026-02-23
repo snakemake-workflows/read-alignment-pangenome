@@ -16,7 +16,7 @@ rule count_sample_kmers:
     resources:
         mem_gb=64,
     shell:
-        "kmc -k29 -m{params.mem} -sm -okff -t{threads} -v {input.reads} "
+        "kmc -k29 -m{params.mem} -sm -okff -t{threads} -v @<(printf '%s\n' {input.reads}) "
         '"{params.out_file}" . &> {log}'
 
 
