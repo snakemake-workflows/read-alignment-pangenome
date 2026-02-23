@@ -17,7 +17,7 @@ rule count_sample_kmers:
         mem_gb=64,
     shell:
         "kmc -k29 -m{params.mem} -sm -okff -t{threads} -v {input.reads} "
-        "\"{params.out_file}\" . &> {log}"
+        '"{params.out_file}" . &> {log}'
 
 
 rule create_reference_paths:

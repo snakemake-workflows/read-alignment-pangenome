@@ -46,5 +46,3 @@ primers:
 
 params:
   fastp: "--detect_adapter_for_pe"
-
-

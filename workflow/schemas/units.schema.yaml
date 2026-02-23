@@ -36,4 +36,3 @@ oneOf:
       - fq1
   - required:
       - sra
-      
