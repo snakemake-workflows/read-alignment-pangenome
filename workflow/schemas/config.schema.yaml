@@ -17,12 +17,6 @@ properties:
     maximum: 128
     default: 8
 
-  threads:
-    type: object
-    properties:
-      kmc:
-        type: integer
-
   ref:
     type: object
     properties:

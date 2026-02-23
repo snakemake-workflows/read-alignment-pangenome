@@ -47,6 +47,4 @@ primers:
 params:
   fastp: "--detect_adapter_for_pe"
 
-# Kept for compatibility; not used by count_sample_kmers if you switched to kmc_threads.
-threads:
-  kmc: 16
+

@@ -2,10 +2,10 @@ rule fastqc:
     input:
         get_fastqc_input,
     output:
-        html="<results>/qc/fastqc/{sample}/{unit}.{fq}.html",
-        zip="<results>/qc/fastqc/{sample}/{unit}.{fq}_fastqc.zip",
+        html="results/qc/fastqc/{sample}/{unit}.{fq}.html",
+        zip="results/qc/fastqc/{sample}/{unit}.{fq}_fastqc.zip",
     log:
-        "<results>/logs/fastqc/{sample}/{unit}.{fq}.log",
+        "results/logs/fastqc/{sample}/{unit}.{fq}.log",
     resources:
         mem_mb=1024,
     wrapper:
@@ -14,13 +14,12 @@ rule fastqc:
 
 rule samtools_idxstats_cram:
     input:
-        cram="<results>/mapped/vg/{sample}.sorted.cram",
-        crai="<results>/mapped/vg/{sample}.sorted.cram.crai",
-        ref=genome,
+        cram="results/mapped/vg/{sample}.sorted.cram",
+        crai="results/mapped/vg/{sample}.sorted.cram.crai",
     output:
-        "<results>/qc/{sample}.cram.idxstats",
+        "results/qc/{sample}.cram.idxstats",
     log:
-        "<results>/logs/samtools/idxstats/{sample}.log",
+        "results/logs/samtools/idxstats/{sample}.log",
     conda:
         "../envs/samtools.yaml"
     threads: 1
@@ -30,12 +29,12 @@ rule samtools_idxstats_cram:
 
 rule samtools_stats_cram:
     input:
-        cram="<results>/mapped/vg/{sample}.sorted.cram",
+        cram="results/mapped/vg/{sample}.sorted.cram",
         ref=genome,
     output:
-        "<results>/qc/{sample}.cram.stats",
+        "results/qc/{sample}.cram.stats",
     log:
-        "<results>/logs/samtools/stats/{sample}.log",
+        "results/logs/samtools/stats/{sample}.log",
     conda:
         "../envs/samtools.yaml"
     threads: 2
@@ -48,7 +47,7 @@ rule multiqc:
         get_fastqc_results,
     output:
         report(
-            "<results>/qc/multiqc/{group}.html",
+            "results/qc/multiqc/{group}.html",
             category="Quality control",
             caption="../report/multiqc.rst",
             labels={"Sample group": "{group}"},
@@ -56,6 +55,6 @@ rule multiqc:
     params:
         "--exclude snippy",
     log:
-        "<results>/logs/multiqc/{group}.log",
+        "results/logs/multiqc/{group}.log",
     wrapper:
         "v2.10.0/bio/multiqc"

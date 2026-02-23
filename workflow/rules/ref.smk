@@ -2,7 +2,7 @@ rule get_genome:
     output:
         genome,
     log:
-        "<results>/logs/get-genome.log",
+        "results/logs/get-genome.log",
     params:
         species=config["ref"]["species"],
         datatype="dna",
@@ -20,7 +20,7 @@ rule genome_faidx:
     output:
         genome_fai,
     log:
-        "<results>/logs/genome-faidx.log",
+        "results/logs/genome-faidx.log",
     cache: "omit-software"
     wrapper:
         "v8.1.1/bio/samtools/faidx"
@@ -32,7 +32,7 @@ rule genome_dict:
     output:
         genome_dict,
     log:
-        "<results>/logs/samtools/create_dict.log",
+        "results/logs/samtools/create_dict.log",
     conda:
         "../envs/samtools.yaml"
     cache: "omit-software"
@@ -46,7 +46,7 @@ rule bwa_index:
     output:
         idx=multiext(genome, ".amb", ".ann", ".bwt", ".pac", ".sa"),
     log:
-        "<results>/logs/bwa_index.log",
+        "results/logs/bwa_index.log",
     cache: True
     wrapper:
         "v8.1.1/bio/bwa/index"
@@ -60,7 +60,7 @@ rule get_pangenome:
     wildcard_constraints:
         ext="hapl|gbz",
     log:
-        "<results>/logs/pangenome/{ext}.log",
+        "results/logs/pangenome/{ext}.log",
     cache: "omit-software"
     conda:
         "../envs/curl.yaml"

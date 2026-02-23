@@ -2,7 +2,6 @@ import glob
 import os
 from os import path
 
-import yaml
 import pandas as pd
 from snakemake.utils import validate
 from snakemake.exceptions import WorkflowError
@@ -27,12 +26,12 @@ species = config["ref"]["species"]
 build = config["ref"]["build"]
 release = config["ref"]["release"]
 genome_name = f"genome.{datatype_genome}.{species}.{build}.{release}"
-genome_prefix = f"<resources>/{genome_name}"
+genome_prefix = f"resources/{genome_name}"
 genome = f"{genome_prefix}.fasta"
 genome_fai = f"{genome}.fai"
 genome_dict = f"{genome_prefix}.dict"
 pangenome_name = f"pangenome.{species}.{build}"
-pangenome_prefix = f"<resources>/{pangenome_name}"
+pangenome_prefix = f"resources/{pangenome_name}"
 
 # cram variables (mini-workflow: CRAM is mandatory)
 use_cram = True
@@ -103,7 +102,7 @@ def get_fastp_input(wildcards):
         ending = ".gz" if unit["fq1"].endswith("gz") else ""
 
         def get_reads(fq):
-            return f"<results>/pipe/fastp/{unit.sample_name}/{unit.unit_name}.{fq}.fastq{ending}"
+            return f"results/pipe/fastp/{unit.sample_name}/{unit.unit_name}.{fq}.fastq{ending}"
 
     if pd.isna(unit["fq2"]):
         # single end sample
@@ -118,7 +117,7 @@ def get_sra_reads(sample, unit, fq):
     # SRA sample (always paired-end for now)
     accession = unit["sra"]
     return expand(
-        "<resources>/sra/{accession}_{read}.fastq.gz", accession=accession, read=fq
+        "resources/sra/{accession}_{read}.fastq.gz", accession=accession, read=fq
     )
 
 
@@ -202,44 +201,43 @@ def is_paired_end(sample):
 def get_map_reads_input(wildcards):
     if is_paired_end(wildcards.sample):
         return [
-            f"<results>/merged/{wildcards.sample}_R1.fastq.gz",
-            f"<results>/merged/{wildcards.sample}_R2.fastq.gz",
+            f"results/merged/{wildcards.sample}_R1.fastq.gz",
+            f"results/merged/{wildcards.sample}_R2.fastq.gz",
         ]
-    return f"<results>/merged/{wildcards.sample}_single.fastq.gz"
+    return f"results/merged/{wildcards.sample}_single.fastq.gz"
 
 
 def get_trimming_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
-    return f"<results>/mapped/vg/{wildcards.sample}.sorted.{ext}"
+    return f"results/mapped/vg/{wildcards.sample}.sorted.{ext}"
 
 
 def get_primer_bed(wc):
     if isinstance(primer_panels, pd.DataFrame):
         if not pd.isna(primer_panels.loc[wc.panel, "fa2"]):
-            return "<results>/primers/{}_primers.bedpe".format(wc.panel)
+            return "results/primers/{}_primers.bedpe".format(wc.panel)
         else:
-            return "<results>/primers/{}_primers.bed".format(wc.panel)
+            return "results/primers/{}_primers.bed".format(wc.panel)
     else:
         if config["primers"]["trimming"].get("primers_fa2", ""):
-            return "<results>/primers/uniform_primers.bedpe"
+            return "results/primers/uniform_primers.bedpe"
         else:
-            return "<results>/primers/uniform_primers.bed"
+            return "results/primers/uniform_primers.bed"
 
 
 def extract_unique_sample_column_value(sample, col_name):
     result = samples.loc[samples["sample_name"] == sample, col_name].drop_duplicates()
-    if type(result) is not str:
-        if len(result) > 1:
-            raise ValueError(
-                "If a sample is specified multiple times in a samples.tsv "
-                "sheet, all columns except 'group' must contain identical "
-                "entries across the occurrences (rows).\n"
-                f"Here we have sample '{sample}' with multiple entries for "
-                f"the '{col_name}' column, namely:\n"
-                f"{result}\n"
-            )
-        else:
-            result = result.squeeze()
+    if len(result) > 1:
+        raise ValueError(
+            "If a sample is specified multiple times in a samples.tsv "
+            "sheet, all columns except 'group' must contain identical "
+            "entries across the occurrences (rows).\n"
+            f"Here we have sample '{sample}' with multiple entries for "
+            f"the '{col_name}' column, namely:\n"
+            f"{result}\n"
+        )
+
+    result = result.squeeze()
     return result
 
 
@@ -285,15 +283,15 @@ def input_is_fasta(primers):
 def get_primer_regions(wc):
     if isinstance(primer_panels, pd.DataFrame):
         panel = extract_unique_sample_column_value(wc.sample, "panel")
-        return f"<results>/primers/{panel}_primer_regions.tsv"
-    return "<results>/primers/uniform_primer_regions.tsv"
+        return f"results/primers/{panel}_primer_regions.tsv"
+    return "results/primers/uniform_primer_regions.tsv"
 
 
 def get_read_group(prefix: str):
     def inner(wildcards):
         """Denote sample name and platform in read group."""
         platform = extract_unique_sample_column_value(wildcards.sample, "platform")
-        return r"{prefix}'@RG\tID:{sample}\tSM:{sample}\tPL:{platform}'".format(
+        return "{prefix}'@RG\tID:{sample}\tSM:{sample}\tPL:{platform}'".format(
             sample=wildcards.sample, platform=platform, prefix=prefix
         )
 
@@ -303,7 +301,7 @@ def get_read_group(prefix: str):
 def get_trimmed_fastqs(wc):
     if units.loc[wc.sample, "adapters"].notna().all():
         return expand(
-            "<results>/trimmed/{sample}/{unit}_{read}.fastq.gz",
+            "results/trimmed/{sample}/{unit}_{read}.fastq.gz",
             unit=units.loc[wc.sample, "unit_name"],
             sample=wc.sample,
             read=wc.read,
@@ -373,7 +371,7 @@ def get_shortest_primer_length(primers):
 
 
 def get_primer_extra(wc, input):
-    extra = rf"-R '@RG\tID:{wc.panel}\tSM:{wc.panel}' -L 100"
+    extra = f"-R '@RG\tID:{wc.panel}\tSM:{wc.panel}' -L 100"
     min_primer_len = get_shortest_primer_length(input.reads)
     # Check if shortest primer is below default values
     if min_primer_len < 32:
@@ -390,7 +388,7 @@ def get_fastqc_results(wildcards):
     paired_end_units = sra_units | ~pd.isna(sample_units["fq2"])
 
     # fastqc
-    pattern = "<results>/qc/fastqc/{unit.sample_name}/{unit.unit_name}.{fq}_fastqc.zip"
+    pattern = "results/qc/fastqc/{unit.sample_name}/{unit.unit_name}.{fq}_fastqc.zip"
     yield from expand(pattern, unit=sample_units.itertuples(), fq="fq1")
     yield from expand(
         pattern, unit=sample_units[paired_end_units].itertuples(), fq="fq2"
@@ -398,7 +396,7 @@ def get_fastqc_results(wildcards):
 
     # fastp
     if sample_units["adapters"].notna().all():
-        pattern = "<results>/trimmed/{unit.sample_name}/{unit.unit_name}.{mode}.qc.html"
+        pattern = "results/trimmed/{unit.sample_name}/{unit.unit_name}.{mode}.qc.html"
         yield from expand(
             pattern, unit=sample_units[paired_end_units].itertuples(), mode="paired"
         )
@@ -408,13 +406,13 @@ def get_fastqc_results(wildcards):
 
     # samtools idxstats (CRAM)
     yield from expand(
-        f"<results>/qc/{wildcards.sample}.cram.idxstats",
+        "results/qc/{sample}.cram.idxstats",
         sample=group_samples,
     )
 
     # samtools stats (CRAM)
     yield from expand(
-        f"<results>/qc/{wildcards.sample}.cram.stats",
+        "results/qc/{sample}.cram.stats",
         sample=group_samples,
     )
 

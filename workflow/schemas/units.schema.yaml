@@ -30,3 +30,10 @@ properties:
 required:
   - sample_name
   - unit_name
+
+oneOf:
+  - required:
+      - fq1
+  - required:
+      - sra
+      
