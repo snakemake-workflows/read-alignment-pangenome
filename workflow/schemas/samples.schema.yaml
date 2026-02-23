@@ -1,25 +1,44 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
-description: entries for the sample sheet
+
+description: an entry in the sample sheet for the read-alignment-pangenome workflow
+
+type: object
 properties:
-  sample:
+  sample_name:
     type: string
-    description: sample name/identifier
-  condition:
+    description: sample name/identifier (alphanumeric, may include '_' and '-')
+    pattern: "^[a-zA-Z_0-9-]+$"
+
+  group:
     type: string
-    description: sample condition that will be compared during differential analysis
-  replicate:
-    type: integer
-    default: 1
-    description: consecutive numbers representing multiple replicates of one condition
-  read1:
+    description: group of samples
+    pattern: "^[a-zA-Z_0-9-]+$"
+
+  panel:
     type: string
-    description: names of fastq.gz files, read 1
-  read2:
+    description: ID of primer panel (used if primers are configured)
+
+  platform:
     type: string
-    description: names of fastq.gz files, read 2 (optional)
+    enum:
+      [
+        "CAPILLARY",
+        "LS454",
+        "ILLUMINA",
+        "SOLID",
+        "HELICOS",
+        "IONTORRENT",
+        "ONT",
+        "PACBIO",
+      ]
+    description: sequencing platform (used for read group metadata)
+
+  datatype:
+    type: string
+    enum: [dna, rna]
+    description: datatype (optional; kept for compatibility)
 
 required:
-  - sample
-  - condition
-  - replicate
-  - read1
+  - sample_name
+  - platform
+  - group
