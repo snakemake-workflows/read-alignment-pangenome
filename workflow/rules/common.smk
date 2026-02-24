@@ -6,7 +6,6 @@ import pandas as pd
 from snakemake.utils import validate
 from snakemake.exceptions import WorkflowError
 
-
 validate(config, schema="../schemas/config.schema.yaml")
 
 samples = (
@@ -76,13 +75,6 @@ primer_panels = (
 )
 if primer_panels.empty:
     primer_panels = None
-
-
-def is_activated(xpath):
-    c = config
-    for entry in xpath.split("/"):
-        c = c.get(entry, {})
-    return bool(c.get("activate", False))
 
 
 def get_fastp_input(wildcards):
@@ -274,12 +266,6 @@ def get_panel_primer_input(panel):
         return panel["fa1"]
 
 
-def input_is_fasta(primers):
-    primers = primers[0] if isinstance(primers, list) else primers
-    fasta_suffixes = ("fasta", "fa")
-    return True if primers.endswith(fasta_suffixes) else False
-
-
 def get_primer_regions(wc):
     if isinstance(primer_panels, pd.DataFrame):
         panel = extract_unique_sample_column_value(wc.sample, "panel")
@@ -313,21 +299,6 @@ def get_trimmed_fastqs(wc):
             for unit in units.loc[wc.sample, "unit_name"]
             for read in get_raw_reads(wc.sample, unit, fq)
         ]
-
-
-def sample_has_primers(wildcards):
-    sample_name = wildcards.sample
-
-    if config["primers"]["trimming"].get("primers_fa1") or (
-        "panel" in samples.columns
-        and samples.loc[samples["sample_name"] == sample_name, "panel"].notna().any()
-    ):
-        if not is_paired_end(sample_name):
-            raise WorkflowError(
-                f"Primer trimming is only available for paired-end data. Sample '{sample_name}' is not paired-end."
-            )
-        return True
-    return False
 
 
 def sample_has_umis(sample):
