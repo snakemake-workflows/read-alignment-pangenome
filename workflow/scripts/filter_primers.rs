@@ -86,24 +86,28 @@ fn is_secondary_alignment(
     let data = record.data();
     match data.get(Tag::OtherAlignments) {
         Some(Ok(sa_entry)) => {
-            let split_tag = sa_entry
-                .value()
-                .as_str()
-                .unwrap()
-                .split(',')
-                .collect::<Vec<&str>>();
+            for entry in sa_entry.value().as_str().unwrap().split(';') {
+                if entry.is_empty() {
+                    continue;
+                }
 
-            if split_tag.len() < 2 {
-                return Ok(false);
+                let split_tag = entry.split(',').collect::<Vec<&str>>();
+                if split_tag.len() < 2 {
+                    continue;
+                }
+
+                let chrom = split_tag[0];
+                let pos = split_tag[1].parse::<i32>()?;
+
+                if primary_records.contains(&(
+                    chrom.as_bytes(),
+                    pos,
+                    record.read_name().unwrap().to_owned(),
+                )) {
+                    return Ok(true);
+                }
             }
-
-            let chrom = split_tag[0].as_bytes();
-            let pos = split_tag[1].parse::<i32>()?;
-            return Ok(primary_records.contains(&(
-                chrom,
-                pos,
-                record.read_name().unwrap().to_owned(),
-            )));
+            Ok(false)
         }
         _ => Ok(false),
     }

@@ -73,8 +73,14 @@ primer_panels = (
     .set_index(["panel"], drop=False)
     .sort_index()
 )
+
 if primer_panels.empty:
-    primer_panels = None
+    raise WorkflowError(
+        "Primers TSV is empty: config['primers']['trimming']['tsv']="
+        f"{config['primers']['trimming']['tsv']!r}. "
+        "Downstream helpers expect primer entries; an empty TSV will later cause "
+        "KeyError when dereferencing primers_fa1. Please provide a non-empty primers TSV."
+    )
 
 
 def get_fastp_input(wildcards):
@@ -171,7 +177,11 @@ def get_fastp_extra(wildcards):
     extra = config["params"]["fastp"]
     if "umi_read" in samples.columns and "umi_len" in samples.columns:
         if sample_has_umis(wildcards.sample):
-            extra += get_annotate_umis_params(wildcards)
+            umi_extra = get_annotate_umis_params(wildcards)
+            if extra and umi_extra:
+                extra += " " + umi_extra
+            else:
+                extra += umi_extra
     return extra
 
 
@@ -285,7 +295,16 @@ def get_read_group(prefix: str):
 
 
 def get_trimmed_fastqs(wc):
-    if units.loc[wc.sample, "adapters"].notna().all():
+    adapters = units.loc[wc.sample, "adapters"]
+    if adapters.notna().any() and adapters.isna().any():
+        error_msg = (
+            "Mixed adapter configuration for sample {!r}: units={!r}. "
+            "Some units have adapters set and others are NA. "
+            "Fix units.tsv so adapters is set for all units of the sample or NA for all."
+        ).format(wc.sample, list(units.loc[wc.sample, "unit_name"]))
+        raise Exception(error_msg)
+
+    if adapters.notna().all():
         return expand(
             "results/trimmed/{sample}/{unit}_{read}.fastq.gz",
             unit=units.loc[wc.sample, "unit_name"],

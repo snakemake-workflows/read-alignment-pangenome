@@ -17,7 +17,7 @@ rule fastp_pipe:
         "results/logs/pipe-fastqs/fastp/{sample}-{unit}.{fq}.{ext}.log",
     wildcard_constraints:
         ext=r"fastq|fastq\.gz",
-    threads: 0
+    threads: 1
     conda:
         "../envs/coreutils.yaml"
     shell:

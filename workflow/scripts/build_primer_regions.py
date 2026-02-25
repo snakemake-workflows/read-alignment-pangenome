@@ -70,7 +70,7 @@ def parse_bedpe(log_file, out_path):
 
 chunksize = 10**6
 with open(snakemake.log[0], "w") as log_file:
-    if snakemake.input[0].endswith("bedpe"):
+    if snakemake.input[0].endswith((".bedpe", ".bedpe.gz")):
         parse_bedpe(log_file, snakemake.output[0])
     else:
         with open(snakemake.output[0], "w") as out:

@@ -1,2 +1,2 @@
-sample_name	group	platform
-test	test	ILLUMINA
+sample_name	group	platform	panel
+test	test	ILLUMINA	dummy

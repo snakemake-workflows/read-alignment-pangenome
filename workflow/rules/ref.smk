@@ -65,4 +65,5 @@ rule get_pangenome:
     conda:
         "../envs/curl.yaml"
     shell:
-        "curl -o {output} {params.url} 2> {log}"
+        "curl --fail --location --show-error -o {output}.tmp {params.url} 2> {log} && "
+        "mv {output}.tmp {output}"
