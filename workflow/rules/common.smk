@@ -1,6 +1,7 @@
 import glob
 import os
 from os import path
+import warnings
 
 import pandas as pd
 from snakemake.utils import validate
@@ -76,11 +77,19 @@ primer_panels = (
 )
 
 primers_available = not primer_panels.empty
+
+# if TSV is empty but primers are provided via config, restore legacy sentinel fallback
+if not primers_available and config["primers"]["trimming"].get("primers_fa1"):
+    primer_panels = None
+    primers_available = True
+
+# otherwise, primers are disabled and we warn (do not raise at import time)
 if not primers_available:
-    print(
-        "warning: primers tsv is empty: config['primers']['trimming']['tsv']="
+    warnings.warn(
+        "primers tsv is empty: config['primers']['trimming']['tsv']="
         f"{repr(config['primers']['trimming']['tsv'])}. "
-        "primer-related functionality is disabled for this run."
+        "primer-related functionality is disabled for this run.",
+        stacklevel=2,
     )
 
 
