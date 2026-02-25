@@ -4,7 +4,6 @@ from os import path
 
 import pandas as pd
 from snakemake.utils import validate
-from snakemake.exceptions import WorkflowError
 
 validate(config, schema="../schemas/config.schema.yaml")
 
@@ -74,12 +73,12 @@ primer_panels = (
     .sort_index()
 )
 
-if primer_panels.empty:
-    raise WorkflowError(
-        "Primers TSV is empty: config['primers']['trimming']['tsv']="
+primers_available = not primer_panels.empty
+if not primers_available:
+    print(
+        "warning: primers tsv is empty: config['primers']['trimming']['tsv']="
         f"{repr(config['primers']['trimming']['tsv'])}. "
-        "Downstream helpers expect primer entries; an empty TSV will later cause "
-        "KeyError when dereferencing primers_fa1. Please provide a non-empty primers TSV."
+        "primer-related functionality is disabled for this run."
     )
 
 
@@ -215,6 +214,9 @@ def get_trimming_input(wildcards, bai=False):
 
 
 def get_primer_bed(wc):
+    if not primers_available:
+        return []
+
     if isinstance(primer_panels, pd.DataFrame):
         if not pd.isna(primer_panels.loc[wc.panel, "fa2"]):
             return "results/primers/{}_primers.bedpe".format(wc.panel)
@@ -244,6 +246,9 @@ def extract_unique_sample_column_value(sample, col_name):
 
 
 def get_sample_primer_fastas(sample):
+    if not primers_available:
+        return ""
+
     if isinstance(primer_panels, pd.DataFrame):
         panel = extract_unique_sample_column_value(sample, "panel")
         if not pd.isna(primer_panels.loc[panel, "fa2"]):
@@ -262,6 +267,9 @@ def get_sample_primer_fastas(sample):
 
 
 def get_panel_primer_input(panel):
+    if not primers_available:
+        return ""
+
     if panel == "uniform":
         if config["primers"]["trimming"].get("primers_fa2", ""):
             return [
@@ -277,6 +285,9 @@ def get_panel_primer_input(panel):
 
 
 def get_primer_regions(wc):
+    if not primers_available:
+        return []
+
     if isinstance(primer_panels, pd.DataFrame):
         panel = extract_unique_sample_column_value(wc.sample, "panel")
         return f"results/primers/{panel}_primer_regions.tsv"
