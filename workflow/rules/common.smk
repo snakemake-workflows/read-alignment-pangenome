@@ -77,7 +77,7 @@ primer_panels = (
 if primer_panels.empty:
     raise WorkflowError(
         "Primers TSV is empty: config['primers']['trimming']['tsv']="
-        f"{config['primers']['trimming']['tsv']!r}. "
+        f"{config['primers']['trimming']['tsv']! r}. "
         "Downstream helpers expect primer entries; an empty TSV will later cause "
         "KeyError when dereferencing primers_fa1. Please provide a non-empty primers TSV."
     )
