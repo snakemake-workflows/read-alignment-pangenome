@@ -5,7 +5,9 @@ from os import path
 import pandas as pd
 from snakemake.utils import validate
 
-validate(config, schema="../schemas/config.schema.yaml")
+schema_dir = path.join(workflow.basedir, "schemas")
+
+validate(config, schema=path.join(schema_dir, "config.schema.yaml"))
 
 samples = (
     pd.read_csv(
@@ -60,7 +62,7 @@ units = (
     .sort_index()
 )
 
-validate(units, schema="../schemas/units.schema.yaml")
+validate(units, schema=path.join(schema_dir, "units.schema.yaml"))
 
 primer_panels = (
     pd.read_csv(
@@ -177,10 +179,11 @@ def get_fastp_extra(wildcards):
     if "umi_read" in samples.columns and "umi_len" in samples.columns:
         if sample_has_umis(wildcards.sample):
             umi_extra = get_annotate_umis_params(wildcards)
-            if extra and umi_extra:
-                extra += " " + umi_extra
-            else:
-                extra += umi_extra
+            if umi_extra:
+                if extra:
+                    extra = " ".join([extra, umi_extra])
+                else:
+                    extra = umi_extra
     return extra
 
 
