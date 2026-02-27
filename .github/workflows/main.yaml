@@ -65,3 +65,9 @@ jobs:
           directory: .test
           snakefile: workflow/Snakefile
           args: "--sdm conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp --report report.zip"
+      - name: Upload Snakemake report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snakemake-report
+          path: .test/report.zip

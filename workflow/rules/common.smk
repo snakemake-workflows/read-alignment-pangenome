@@ -5,10 +5,9 @@ import warnings
 
 import pandas as pd
 from snakemake.utils import validate
+from snakemake.exceptions import WorkflowError
 
-schema_dir = path.join(workflow.basedir, "schemas")
-
-validate(config, schema=path.join(schema_dir, "config.schema.yaml"))
+validate(config, schema=workflow.source_path("../schemas/config.schema.yaml"))
 
 samples = (
     pd.read_csv(
@@ -63,7 +62,7 @@ units = (
     .sort_index()
 )
 
-validate(units, schema=path.join(schema_dir, "units.schema.yaml"))
+validate(units, schema=workflow.source_path("../schemas/units.schema.yaml"))
 
 primer_panels = (
     pd.read_csv(
@@ -79,7 +78,10 @@ primer_panels = (
 primers_available = not primer_panels.empty
 
 # if TSV is empty but primers are provided via config, restore legacy sentinel fallback
-if not primers_available and config["primers"]["trimming"].get("primers_fa1"):
+if not primers_available and (
+    config["primers"]["trimming"].get("primers_fa1")
+    or config["primers"]["trimming"].get("primers_fa2")
+):
     primer_panels = None
     primers_available = True
 
@@ -88,8 +90,7 @@ if not primers_available:
     warnings.warn(
         "primers tsv is empty: config['primers']['trimming']['tsv']="
         f"{repr(config['primers']['trimming']['tsv'])}. "
-        "primer-related functionality is disabled for this run.",
-        stacklevel=2,
+        "primer-related functionality is disabled for this run."
     )
 
 
@@ -188,11 +189,7 @@ def get_fastp_extra(wildcards):
     if "umi_read" in samples.columns and "umi_len" in samples.columns:
         if sample_has_umis(wildcards.sample):
             umi_extra = get_annotate_umis_params(wildcards)
-            if umi_extra:
-                if extra:
-                    extra = " ".join([extra, umi_extra])
-                else:
-                    extra = umi_extra
+            extra = " ".join(part for part in [extra, umi_extra] if part)
     return extra
 
 
@@ -282,7 +279,7 @@ def get_panel_primer_input(panel):
     if not primers_available:
         return ""
 
-    if panel == "uniform":
+    if panel == "uniform" or not isinstance(primer_panels, pd.DataFrame):
         if config["primers"]["trimming"].get("primers_fa2", ""):
             return [
                 config["primers"]["trimming"]["primers_fa1"],
@@ -325,7 +322,7 @@ def get_trimmed_fastqs(wc):
             "Some units have adapters set and others are NA. "
             "Fix units.tsv so adapters is set for all units of the sample or NA for all."
         ).format(wc.sample, list(units.loc[wc.sample, "unit_name"]))
-        raise Exception(error_msg)
+        raise WorkflowError(error_msg)
 
     if adapters.notna().all():
         return expand(
