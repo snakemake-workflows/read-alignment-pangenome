@@ -14,7 +14,7 @@ ref:
 
 primers:
   trimming:
-    activate: true
+    activate: false
     primers_fa1: ""
     primers_fa2: ""
     tsv: "config/primers.tsv"

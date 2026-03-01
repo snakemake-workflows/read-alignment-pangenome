@@ -33,6 +33,7 @@ ref:
 # provided or primer panels are set in samplesheet
 primers:
   trimming:
+    activate: true
     # path to fasta files containing primer sequences
     primers_fa1: ""
     primers_fa2: ""

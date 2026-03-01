@@ -88,7 +88,11 @@ rule fix_mate:
 # for not being able to find read group information
 rule add_read_group:
     input:
-        "results/mapped/vg/{sample}.mate_fixed.bam",
+        lambda wc: (
+            "results/mapped/vg/{sample}.mate_fixed.bam"
+            if sample_has_primers(wc)
+            else "results/mapped/vg/{sample}.reheadered.bam"
+        ),
     output:
         temp("results/mapped/vg/{sample}.bam"),
     log:
@@ -122,7 +126,7 @@ rule sort_alignments:
 
 rule bam_to_cram:
     input:
-        bam="results/mapped/vg/{sample}.sorted.bam",
+        bam=get_consensus_input,
         ref=genome,
         fai=genome_fai,
     output:

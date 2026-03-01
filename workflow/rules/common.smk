@@ -217,6 +217,14 @@ def get_map_reads_input(wildcards):
     return f"results/merged/{wildcards.sample}_single.fastq.gz"
 
 
+def get_consensus_input(wildcards, bai=False):
+    ext = "bai" if bai else "bam"
+    if sample_has_primers(wildcards):
+        return f"results/trimmed/{{sample}}.trimmed.{ext}"
+    else:
+        return get_trimming_input(wildcards, bai)
+
+
 def get_trimming_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     return f"results/mapped/vg/{wildcards.sample}.sorted.{ext}"
@@ -338,6 +346,27 @@ def get_trimmed_fastqs(wc):
             for unit in units.loc[wc.sample, "unit_name"]
             for read in get_raw_reads(wc.sample, unit, fq)
         ]
+
+
+def sample_has_primers(wildcards):
+    sample_name = wildcards.sample
+
+    if config.get("primers", {}).get("trimming", {}).get("activate", False) and (
+        config.get("primers", {}).get("trimming", {}).get("primers_fa1")
+        or config.get("primers", {}).get("trimming", {}).get("primers_fa2")
+        or (
+            "panel" in samples.columns
+            and samples.loc[samples["sample_name"] == sample_name, "panel"]
+            .notna()
+            .any()
+        )
+    ):
+        if not is_paired_end(sample_name):
+            raise WorkflowError(
+                f"Primer trimming is only available for paired-end data. Sample '{sample_name}' is not paired-end."
+            )
+        return True
+    return False
 
 
 def sample_has_umis(sample):
