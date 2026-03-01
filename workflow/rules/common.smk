@@ -220,7 +220,7 @@ def get_map_reads_input(wildcards):
 def get_consensus_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     if sample_has_primers(wildcards):
-        return f"results/trimmed/{{sample}}.trimmed.{ext}"
+        return f"results/trimmed/{wildcards.sample}.trimmed.{ext}"
     else:
         return get_trimming_input(wildcards, bai)
 
