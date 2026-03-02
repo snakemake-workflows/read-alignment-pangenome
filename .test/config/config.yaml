@@ -22,3 +22,8 @@ primers:
 
 params:
   fastp: ""
+  picard:
+    MarkDuplicates: "--VALIDATION_STRINGENCY LENIENT"
+  gatk:
+    BaseRecalibrator: ""
+    applyBQSR: ""

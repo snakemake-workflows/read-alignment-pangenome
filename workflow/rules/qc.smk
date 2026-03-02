@@ -3,7 +3,7 @@ rule fastqc:
         get_fastqc_input,
     output:
         html="results/qc/fastqc/{sample}/{unit}.{fq}.html",
-        zip="results/qc/fastqc/{sample}/{unit}.{fq}_fastqc.zip",
+        zip="results/qc/fastqc/{sample}/{unit}.{fq}_fastqc.zip",  # the suffix _fastqc.zip is necessary for multiqc to find the file. If not using multiqc, you are free to choose an arbitrary filename
     log:
         "results/logs/fastqc/{sample}/{unit}.{fq}.log",
     resources:
@@ -12,34 +12,27 @@ rule fastqc:
         "v2.10.0/bio/fastqc"
 
 
-rule samtools_idxstats_cram:
+rule samtools_idxstats:
     input:
-        cram="results/mapped/vg/{sample}.sorted.cram",
-        crai="results/mapped/vg/{sample}.sorted.cram.crai",
+        bam="results/recal/{sample}.bam",
+        idx="results/recal/{sample}.bai",
     output:
-        "results/qc/{sample}.cram.idxstats",
+        "results/qc/{sample}.bam.idxstats",
     log:
         "results/logs/samtools/idxstats/{sample}.log",
-    conda:
-        "../envs/samtools.yaml"
-    threads: 1
-    shell:
-        "samtools idxstats {input.cram} > {output} 2> {log}"
+    wrapper:
+        "v2.3.2/bio/samtools/idxstats"
 
 
-rule samtools_stats_cram:
+rule samtools_stats:
     input:
-        cram="results/mapped/vg/{sample}.sorted.cram",
-        ref=genome,
+        bam="results/recal/{sample}.bam",
     output:
-        "results/qc/{sample}.cram.stats",
+        "results/qc/{sample}.bam.stats",
     log:
         "results/logs/samtools/stats/{sample}.log",
-    conda:
-        "../envs/samtools.yaml"
-    threads: 2
-    shell:
-        "samtools stats -@ {threads} -T {input.ref} {input.cram} > {output} 2> {log}"
+    wrapper:
+        "v2.3.2/bio/samtools/stats"
 
 
 rule multiqc:

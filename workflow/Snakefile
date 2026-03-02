@@ -1,8 +1,7 @@
-# Main entrypoint of the read-alignment-pangenome workflow (derived from dna-seq-varlociraptor).
-# Scope: pangenome download → trimming → vg giraffe mapping → postprocessing → CRAM+CRAI.
+# Scope: pangenome download → trimming → mapping → postprocessing → final recalibrated BAM.
 # Final outputs:
-#   results/mapped/vg/{sample}.sorted.cram
-#   results/mapped/vg/{sample}.sorted.cram.crai
+#   results/recal/{sample}.bam
+#   results/recal/{sample}.bai
 # Variant calling (BCF/VCF), annotation, filtering, tables, etc. are intentionally out of scope.
 
 from snakemake.utils import min_version
@@ -23,6 +22,7 @@ configfile: "config/config.yaml"
 # load rules
 # -----------------------------------------------------
 include: "rules/common.smk"
+include: "rules/utils.smk"
 include: "rules/ref.smk"
 include: "rules/trimming.smk"
 include: "rules/mapping.smk"
@@ -48,10 +48,8 @@ onerror:
 # -----------------------------------------------------
 rule only_alignment:
     input:
-        expand("results/mapped/vg/{sample}.sorted.cram", sample=list(samples.index)),
-        expand(
-            "results/mapped/vg/{sample}.sorted.cram.crai", sample=list(samples.index)
-        ),
+        expand("results/recal/{sample}.bam", sample=list(samples.index)),
+        expand("results/recal/{sample}.bai", sample=list(samples.index)),
 
 
 rule all:

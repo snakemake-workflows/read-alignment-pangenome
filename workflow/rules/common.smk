@@ -33,9 +33,6 @@ genome_dict = f"{genome_prefix}.dict"
 pangenome_name = f"pangenome.{species}.{build}"
 pangenome_prefix = f"resources/{pangenome_name}"
 
-# cram variables (mini-workflow: CRAM is mandatory)
-use_cram = True
-
 
 def _group_or_sample(row):
     group = row.get("group", None)
@@ -92,6 +89,22 @@ if not primers_available:
         f"{repr(config['primers']['trimming']['tsv'])}. "
         "primer-related functionality is disabled for this run."
     )
+
+
+def is_activated(xpath):
+    c = config
+    for entry in xpath.split("/"):
+        c = c.get(entry, {})
+    return bool(c.get("activate", False))
+
+
+def get_aligner(wildcards):
+    if get_sample_datatype(wildcards.sample) == "rna":
+        return "star"
+    elif is_activated("ref/pangenome"):
+        return "vg"
+    else:
+        return "bwa"
 
 
 def get_fastp_input(wildcards):
@@ -217,23 +230,50 @@ def get_map_reads_input(wildcards):
     return f"results/merged/{wildcards.sample}_single.fastq.gz"
 
 
+def get_sample_datatype(sample):
+    return samples.loc[[sample], "datatype"].iloc[0]
+
+
+def get_markduplicates_input(wildcards):
+    aligner = get_aligner(wildcards)
+    if sample_has_umis(wildcards.sample):
+        return f"results/mapped/{aligner}/{{sample}}.annotated.bam"
+    else:
+        return f"results/mapped/{aligner}/{{sample}}.sorted.bam"
+
+
+def get_recalibrate_quality_input(wildcards, bai=False):
+    ext = "bai" if bai else "bam"
+    datatype = get_sample_datatype(wildcards.sample)
+    if datatype == "rna":
+        return "results/split/{{sample}}.{ext}".format(ext=ext)
+    # Post-processing of DNA samples
+    if is_activated("calc_consensus_reads"):
+        return "results/consensus/{{sample}}.{ext}".format(ext=ext)
+    else:
+        return get_consensus_input(wildcards, bai)
+
+
 def get_consensus_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     if sample_has_primers(wildcards):
-        return f"results/trimmed/{wildcards.sample}.trimmed.{ext}"
+        return f"results/trimmed/{{sample}}.trimmed.{ext}"
     else:
         return get_trimming_input(wildcards, bai)
 
 
 def get_trimming_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
-    return f"results/mapped/vg/{wildcards.sample}.sorted.{ext}"
+    aligner = get_aligner(wildcards)
+    if is_activated("remove_duplicates"):
+        return "results/dedup/{{sample}}.{ext}".format(ext=ext)
+    else:
+        return "results/mapped/{aligner}/{{sample}}.sorted.{ext}".format(
+            aligner=aligner, ext=ext
+        )
 
 
 def get_primer_bed(wc):
-    if not primers_available:
-        return []
-
     if isinstance(primer_panels, pd.DataFrame):
         if not pd.isna(primer_panels.loc[wc.panel, "fa2"]):
             return "results/primers/{}_primers.bedpe".format(wc.panel)
@@ -311,6 +351,22 @@ def get_primer_regions(wc):
     return "results/primers/uniform_primer_regions.tsv"
 
 
+def get_markduplicates_extra(wc):
+    c = config["params"]["picard"]["MarkDuplicates"]
+
+    if sample_has_umis(wc.sample):
+        b = "--BARCODE_TAG BX"
+    else:
+        b = ""
+
+    if is_activated("calc_consensus_reads"):
+        d = "--TAG_DUPLICATE_SET_MEMBERS true"
+    else:
+        d = ""
+
+    return f"{c} {b} {d}"
+
+
 def get_read_group(prefix: str):
     def inner(wildcards):
         """Denote sample name and platform in read group."""
@@ -320,6 +376,14 @@ def get_read_group(prefix: str):
         )
 
     return inner
+
+
+def get_tabix_params(wildcards):
+    if wildcards.format == "vcf":
+        return "-p vcf"
+    if wildcards.format == "txt":
+        return "-s 1 -b 2 -e 2"
+    raise ValueError("Invalid format for tabix: {}".format(wildcards.format))
 
 
 def get_trimmed_fastqs(wc):
@@ -367,6 +431,15 @@ def sample_has_primers(wildcards):
             )
         return True
     return False
+
+
+def get_processed_consensus_input(wildcards):
+    if wildcards.read_type == "se":
+        return "results/consensus/fastq/{}.se.fq".format(wildcards.sample)
+    return [
+        "results/consensus/fastq/{}.1.fq".format(wildcards.sample),
+        "results/consensus/fastq/{}.2.fq".format(wildcards.sample),
+    ]
 
 
 def sample_has_umis(sample):
@@ -443,15 +516,15 @@ def get_fastqc_results(wildcards):
             pattern, unit=sample_units[~paired_end_units].itertuples(), mode="single"
         )
 
-    # samtools idxstats (CRAM)
+    # samtools idxstats
     yield from expand(
-        "results/qc/{sample}.cram.idxstats",
+        "results/qc/{sample}.bam.idxstats",
         sample=group_samples,
     )
 
-    # samtools stats (CRAM)
+    # samtools stats
     yield from expand(
-        "results/qc/{sample}.cram.stats",
+        "results/qc/{sample}.bam.stats",
         sample=group_samples,
     )
 

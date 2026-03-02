@@ -40,6 +40,39 @@ rule genome_dict:
         "samtools dict {input} > {output} 2> {log}"
 
 
+rule get_known_variants:
+    input:
+        # use fai to annotate contig lengths for GATK BQSR
+        fai=genome_fai,
+    output:
+        vcf="resources/variation.vcf.gz",
+    log:
+        "results/logs/get-known-variants.log",
+    params:
+        species=config["ref"]["species"],
+        release=config["ref"]["release"],
+        build=config["ref"]["build"],
+        type="all",
+        chromosome=config["ref"].get("chromosome"),
+    cache: "omit-software"
+    wrapper:
+        "v9.0.0/bio/reference/ensembl-variation"
+
+
+rule remove_iupac_codes:
+    input:
+        "resources/variation.vcf.gz",
+    output:
+        "resources/variation.noiupac.vcf.gz",
+    log:
+        "results/logs/fix-iupac-alleles.log",
+    conda:
+        "../envs/rbt.yaml"
+    cache: "omit-software"
+    shell:
+        "(rbt vcf-fix-iupac-alleles < {input} | bcftools view -Oz > {output}) 2> {log}"
+
+
 rule bwa_index:
     input:
         genome,

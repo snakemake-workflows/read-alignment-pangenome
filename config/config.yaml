@@ -47,3 +47,8 @@ primers:
 
 params:
   fastp: "--detect_adapter_for_pe"
+  picard:
+    MarkDuplicates: "--VALIDATION_STRINGENCY LENIENT"
+  gatk:
+    BaseRecalibrator: ""
+    applyBQSR: ""
