@@ -27,7 +27,6 @@ include: "rules/ref.smk"
 include: "rules/trimming.smk"
 include: "rules/mapping.smk"
 include: "rules/primers.smk"
-include: "rules/qc.smk"
 
 
 # optional messages, log and error handling

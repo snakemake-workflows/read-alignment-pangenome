@@ -1,23 +1,29 @@
-samples: "config/samples.tsv"
-units: "config/units.tsv"
+samples: "config-pangenome-on/samples.tsv"
+units: "config-pangenome-on/units.tsv"
 
 kmc_threads: 8
+
+remove_duplicates:
+  activate: false
+
+calc_consensus_reads:
+  activate: false
 
 ref:
   species: "homo_sapiens"
   release: 111
   build: "GRCh38"
   pangenome:
-    activate: false
+    activate: true
     source: "hprc"
-    version: "freeze1"
+    version: "v1.1"
 
 primers:
   trimming:
     activate: true
     primers_fa1: ""
     primers_fa2: ""
-    tsv: "config/primers.tsv"
+    tsv: "config-pangenome-on/primers.tsv"
     library_length: 0
 
 params:

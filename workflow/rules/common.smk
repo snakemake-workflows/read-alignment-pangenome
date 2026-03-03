@@ -99,9 +99,7 @@ def is_activated(xpath):
 
 
 def get_aligner(wildcards):
-    if get_sample_datatype(wildcards.sample) == "rna":
-        return "star"
-    elif is_activated("ref/pangenome"):
+    if is_activated("ref/pangenome"):
         return "vg"
     else:
         return "bwa"
@@ -244,9 +242,6 @@ def get_markduplicates_input(wildcards):
 
 def get_recalibrate_quality_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
-    datatype = get_sample_datatype(wildcards.sample)
-    if datatype == "rna":
-        return "results/split/{{sample}}.{ext}".format(ext=ext)
     # Post-processing of DNA samples
     if is_activated("calc_consensus_reads"):
         return "results/consensus/{{sample}}.{ext}".format(ext=ext)

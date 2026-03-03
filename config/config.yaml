@@ -1,5 +1,5 @@
 # Workflow config (derived from dna-seq-varlociraptor)
-# Scope: pangenome download → trimming → vg giraffe mapping → postprocess → CRAM+CRAI
+# Scope: reference/pangenome preparation → trimming → read mapping → postprocessing → final BAM+BAI
 
 samples: config/samples.tsv
 units: config/units.tsv
@@ -7,6 +7,12 @@ units: config/units.tsv
 # Threads used by KMC (k-mer counting)
 # (Used by rule count_sample_kmers via config.get("kmc_threads", 8))
 kmc_threads: 16
+
+remove_duplicates:
+  activate: false
+
+calc_consensus_reads:
+  activate: false
 
 ref:
   # Number of chromosomes to consider for calling.

@@ -246,27 +246,6 @@ rule sort_consensus_reads:
         "v8.1.1/bio/samtools/sort"
 
 
-rule splitncigarreads:
-    input:
-        bam=lambda wc: (
-            "results/dedup/{sample}.bam"
-            if is_activated("remove_duplicates")
-            else "results/mapped/star/{sample}.bam"
-        ),
-        ref=genome,
-    output:
-        "results/split/{sample}.bam",
-    log:
-        "results/logs/gatk/splitNCIGARreads/{sample}.log",
-    params:
-        extra="",
-        java_opts="",
-    resources:
-        mem_mb=1024,
-    wrapper:
-        "v8.1.1/bio/gatk/splitncigarreads"
-
-
 rule recalibrate_base_qualities:
     input:
         bam=get_recalibrate_quality_input,
