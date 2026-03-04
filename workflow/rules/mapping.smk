@@ -5,12 +5,12 @@ rule map_reads_bwa:
     output:
         temp("results/mapped/bwa/{sample}.bam"),
     log:
-        "results/logs/bwa_mem/{sample}.log",
+        "logs/bwa_mem/{sample}.log",
     params:
         extra=get_read_group("-R "),
     threads: 8
     wrapper:
-        "v8.1.1/bio/bwa/mem"
+        "v3.8.0/bio/bwa/mem"
 
 
 rule count_sample_kmers:
@@ -20,19 +20,20 @@ rule count_sample_kmers:
         "results/kmers/{sample}.kff",
     params:
         out_file=lambda wc, output: os.path.splitext(output[0])[0],
-        mem=lambda wc, resources: int(resources.mem_gb),
+        mem=lambda wc, resources: resources.mem[:-2],
     conda:
         "../envs/kmc.yaml"
     shadow:
         "minimal"
     log:
-        "results/logs/kmers/{sample}.log",
-    threads: min(int(config.get("kmc_threads", 8)), 128)
+        "logs/kmers/{sample}.log",
+    threads: min(max(workflow.cores, 1), 128)  # kmc can use 128 threads at most
     resources:
-        mem_gb=64,
+        mem="64GB",
     shell:
-        "kmc -k29 -m{params.mem} -sm -okff -t{threads} -v @<(printf '%s\n' {input.reads}) "
-        '"{params.out_file}" . &> {log}'
+        "tmpdir=$(mktemp -d); "
+        "kmc -k29 -m{params.mem} -sm -okff -t{threads} -v @<(ls {input.reads}) {params.out_file} $tmpdir &> {log} && "
+        "rm -r $tmpdir || (rm -r $tmpdir && exit 1)"
 
 
 rule create_reference_paths:
@@ -40,10 +41,8 @@ rule create_reference_paths:
         "resources/reference_paths.txt",
     params:
         build=config["ref"]["build"],
-    conda:
-        "../envs/coreutils.yaml"
     log:
-        "results/logs/reference/paths.log",
+        "logs/reference/paths.log",
     shell:
         'for chrom in {{1..22}} X Y M; do echo "{params.build}#0#chr$chrom"; done > {output} 2> {log}'
 
@@ -51,10 +50,10 @@ rule create_reference_paths:
 rule map_reads_vg:
     input:
         reads=get_map_reads_input,
-        graph=f"{pangenome_prefix}.gbz",
-        kmers="results/kmers/{sample}.kff",
-        hapl=f"{pangenome_prefix}.hapl",
-        paths="resources/reference_paths.txt",
+        graph=access.random(f"{pangenome_prefix}.gbz"),
+        kmers=access.random("results/kmers/{sample}.kff"),
+        hapl=access.random(f"{pangenome_prefix}.hapl"),
+        paths=access.random("resources/reference_paths.txt"),
     output:
         bam=temp("results/mapped/vg/{sample}.raw.bam"),
         indexes=temp(
@@ -67,15 +66,15 @@ rule map_reads_vg:
             )
         ),
     log:
-        "results/logs/mapped/vg/{sample}.log",
+        "logs/mapped/vg/{sample}.log",
     benchmark:
-        "results/benchmarks/vg_giraffe/{sample}.tsv"
+        "benchmarks/vg_giraffe/{sample}.tsv"
     params:
         extra=lambda wc, input: f"--ref-paths {input.paths}",
         sorting="none",
     threads: 64
     wrapper:
-        "v8.1.1/bio/vg/giraffe"
+        "v6.1.0/bio/vg/giraffe"
 
 
 rule reheader_mapped_reads:
@@ -88,11 +87,11 @@ rule reheader_mapped_reads:
     conda:
         "../envs/samtools.yaml"
     log:
-        "results/logs/reheader/{sample}.log",
+        "logs/reheader/{sample}.log",
     shell:
-        "(samtools view {input} -H | "
-        "sed -E 's/(SN:{params.build}#0#chr)/SN:/; s/SN:M(\\t|$)/SN:MT\\1/' | "
-        "samtools reheader - {input} > {output}) 2> {log}"
+        "(samtools view {input} -H |"
+        " sed -E 's/(SN:{params.build}#0#chr)/SN:/; s/SN:M/SN:MT/' | "
+        " samtools reheader - {input} > {output}) 2> {log}"
 
 
 rule fix_mate:
@@ -101,12 +100,12 @@ rule fix_mate:
     output:
         temp("results/mapped/vg/{sample}.mate_fixed.bam"),
     log:
-        "results/logs/samtools/fix_mate/{sample}.log",
+        "logs/samtools/fix_mate/{sample}.log",
     threads: 8
     params:
         extra="",
     wrapper:
-        "v8.1.1/bio/samtools/fixmate"
+        "v4.7.2/bio/samtools/fixmate"
 
 
 # adding read groups is exclusive to vg mapped reads and
@@ -122,7 +121,7 @@ rule add_read_group:
     output:
         temp("results/mapped/vg/{sample}.bam"),
     log:
-        "results/logs/samtools/add_rg/{sample}.log",
+        "logs/samtools/add_rg/{sample}.log",
     params:
         read_group=get_read_group(""),
         compression_threads=lambda wildcards, threads: (
@@ -142,7 +141,7 @@ rule sort_alignments:
     output:
         temp("results/mapped/{aligner}/{sample}.sorted.bam"),
     log:
-        "results/logs/sort/{aligner}/{sample}.log",
+        "logs/sort/{aligner}/{sample}.log",
     threads: 16
     resources:
         mem_mb=32000,
@@ -159,7 +158,7 @@ rule annotate_umis:
     conda:
         "../envs/umi_tools.yaml"
     log:
-        "results/logs/annotate_bam/{aligner}/{sample}.log",
+        "logs/annotate_bam/{aligner}/{sample}.log",
     shell:
         "umi_tools group -I {input.bam} --paired --umi-separator : --output-bam -S {output} &> {log}"
 
@@ -171,13 +170,14 @@ rule mark_duplicates:
         bam=temp("results/dedup/{sample}.bam"),
         metrics="results/qc/dedup/{sample}.metrics.txt",
     log:
-        "results/logs/picard/dedup/{sample}.log",
+        "logs/picard/dedup/{sample}.log",
     params:
         extra=get_markduplicates_extra,
     resources:
+        #https://broadinstitute.github.io/picard/faq.html
         mem_mb=3000,
     wrapper:
-        "v8.1.1/bio/picard/markduplicates"
+        "v2.5.0/bio/picard/markduplicates"
 
 
 rule calc_consensus_reads:
@@ -189,7 +189,7 @@ rule calc_consensus_reads:
         consensus_se=temp("results/consensus/fastq/{sample}.se.fq"),
         skipped=temp("results/consensus/{sample}.skipped.bam"),
     log:
-        "results/logs/consensus/{sample}.log",
+        "logs/consensus/{sample}.log",
     conda:
         "../envs/rbt.yaml"
     shell:
@@ -204,16 +204,16 @@ rule map_consensus_reads:
         temp("results/consensus/{sample}.consensus.{read_type}.mapped.bam"),
     params:
         index=lambda w, input: os.path.splitext(input.idx[0])[0],
-        extra=lambda w: f"-C {get_read_group('-R')(w)}",
-        sorting="samtools",
+        extra=lambda w: f"-C {get_read_group("-R")(w)}",
+        sort="samtools",
         sort_order="coordinate",
     wildcard_constraints:
         read_type="pe|se",
     log:
-        "results/logs/bwa_mem/{sample}.{read_type}.consensus.log",
+        "logs/bwa_mem/{sample}.{read_type}.consensus.log",
     threads: 8
     wrapper:
-        "v8.1.1/bio/bwa/mem"
+        "v2.3.2/bio/bwa/mem"
 
 
 rule merge_consensus_reads:
@@ -224,12 +224,10 @@ rule merge_consensus_reads:
     output:
         temp("results/consensus/{sample}.merged.bam"),
     log:
-        "results/logs/samtools_merge/{sample}.log",
-    params:
-        extra="",
+        "logs/samtools_merge/{sample}.log",
     threads: 8
     wrapper:
-        "v8.1.1/bio/samtools/merge"
+        "v2.3.2/bio/samtools/merge"
 
 
 rule sort_consensus_reads:
@@ -238,7 +236,7 @@ rule sort_consensus_reads:
     output:
         temp("results/consensus/{sample}.bam"),
     log:
-        "results/logs/samtools_sort/{sample}.log",
+        "logs/samtools_sort/{sample}.log",
     threads: 16
     resources:
         mem_mb=64000,
@@ -263,10 +261,10 @@ rule recalibrate_base_qualities:
     resources:
         mem_mb=1024,
     log:
-        "results/logs/gatk/baserecalibrator/{sample}.log",
+        "logs/gatk/baserecalibrator/{sample}.log",
     threads: 8
     wrapper:
-        "v8.1.1/bio/gatk/baserecalibratorspark"
+        "v1.25.0/bio/gatk/baserecalibratorspark"
 
 
 ruleorder: apply_bqsr > bam_index
@@ -284,9 +282,9 @@ rule apply_bqsr:
         bam=protected("results/recal/{sample}.bam"),
         bai="results/recal/{sample}.bai",
     log:
-        "results/logs/gatk/gatk_applybqsr/{sample}.log",
+        "logs/gatk/gatk_applybqsr/{sample}.log",
     params:
-        extra=config["params"]["gatk"]["applyBQSR"],
-        java_opts="",
+        extra=config["params"]["gatk"]["applyBQSR"],  # optional
+        java_opts="",  # optional
     wrapper:
-        "v8.1.1/bio/gatk/applybqsr"
+        "v2.3.2/bio/gatk/applybqsr"

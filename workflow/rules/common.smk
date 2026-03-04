@@ -1,24 +1,23 @@
 import glob
-import os
-from os import path
-import warnings
 
 import pandas as pd
 from snakemake.utils import validate
 from snakemake.exceptions import WorkflowError
 
-validate(config, schema=workflow.source_path("../schemas/config.schema.yaml"))
+validate(config, schema="../schemas/config.schema.yaml")
 
 samples = (
     pd.read_csv(
         config["samples"],
         sep="\t",
-        dtype={"sample_name": str, "group": str},
+        dtype={"sample_name": str, "group": str, "umi_len": "Int64"},
         comment="#",
     )
     .set_index("sample_name", drop=False)
     .sort_index()
 )
+if not "mutational_burden_events" in samples.columns:
+    samples["mutational_burden_events"] = pd.NA
 
 # construct genome name
 datatype_genome = "dna"
@@ -33,6 +32,13 @@ genome_dict = f"{genome_prefix}.dict"
 pangenome_name = f"pangenome.{species}.{build}"
 pangenome_prefix = f"resources/{pangenome_name}"
 
+delly_excluded_regions = {
+    ("homo_sapiens", "GRCh38"): "human.hg38",
+    ("homo_sapiens", "GRCh37"): "human.hg19",
+}
+
+mutational_signature_vaf_thresholds = list(range(5, 101, 5))
+
 
 def _group_or_sample(row):
     group = row.get("group", None)
@@ -43,9 +49,10 @@ def _group_or_sample(row):
 
 samples["group"] = [_group_or_sample(row) for _, row in samples.iterrows()]
 
+if "umi_read" not in samples.columns:
+    samples["umi_read"] = pd.NA
 
-def get_group_samples(group):
-    return samples.loc[samples["group"] == group]["sample_name"]
+validate(samples, schema="../schemas/samples.schema.yaml")
 
 
 units = (
@@ -59,36 +66,22 @@ units = (
     .sort_index()
 )
 
-validate(units, schema=workflow.source_path("../schemas/units.schema.yaml"))
+validate(units, schema="../schemas/units.schema.yaml")
 
 primer_panels = (
-    pd.read_csv(
-        config["primers"]["trimming"]["tsv"],
-        sep="\t",
-        dtype={"panel": str, "fa1": str, "fa2": str},
-        comment="#",
+    (
+        pd.read_csv(
+            config["primers"]["trimming"]["tsv"],
+            sep="\t",
+            dtype={"panel": str, "fa1": str, "fa2": str},
+            comment="#",
+        )
+        .set_index(["panel"], drop=False)
+        .sort_index()
     )
-    .set_index(["panel"], drop=False)
-    .sort_index()
+    if config["primers"]["trimming"].get("tsv", "")
+    else None
 )
-
-primers_available = not primer_panels.empty
-
-# if TSV is empty but primers are provided via config, restore legacy sentinel fallback
-if not primers_available and (
-    config["primers"]["trimming"].get("primers_fa1")
-    or config["primers"]["trimming"].get("primers_fa2")
-):
-    primer_panels = None
-    primers_available = True
-
-# otherwise, primers are disabled and we warn (do not raise at import time)
-if not primers_available:
-    warnings.warn(
-        "primers tsv is empty: config['primers']['trimming']['tsv']="
-        f"{repr(config['primers']['trimming']['tsv'])}. "
-        "primer-related functionality is disabled for this run."
-    )
 
 
 def is_activated(xpath):
@@ -122,7 +115,7 @@ def get_fastp_input(wildcards):
         ending = ".gz" if unit["fq1"].endswith("gz") else ""
 
         def get_reads(fq):
-            return f"results/pipe/fastp/{unit.sample_name}/{unit.unit_name}.{fq}.fastq{ending}"
+            return f"pipe/fastp/{unit.sample_name}/{unit.unit_name}.{fq}.fastq{ending}"
 
     if pd.isna(unit["fq2"]):
         # single end sample
@@ -136,9 +129,7 @@ def get_sra_reads(sample, unit, fq):
     unit = units.loc[sample].loc[unit]
     # SRA sample (always paired-end for now)
     accession = unit["sra"]
-    return expand(
-        "resources/sra/{accession}_{read}.fastq.gz", accession=accession, read=fq
-    )
+    return expand("sra/{accession}_{read}.fastq.gz", accession=accession, read=fq)
 
 
 def get_raw_reads(sample, unit, fq):
@@ -197,10 +188,8 @@ def get_fastp_adapters(wildcards):
 
 def get_fastp_extra(wildcards):
     extra = config["params"]["fastp"]
-    if "umi_read" in samples.columns and "umi_len" in samples.columns:
-        if sample_has_umis(wildcards.sample):
-            umi_extra = get_annotate_umis_params(wildcards)
-            extra = " ".join(part for part in [extra, umi_extra] if part)
+    if sample_has_umis(wildcards.sample):
+        extra += get_annotate_umis_params(wildcards)
     return extra
 
 
@@ -222,14 +211,14 @@ def is_paired_end(sample):
 def get_map_reads_input(wildcards):
     if is_paired_end(wildcards.sample):
         return [
-            f"results/merged/{wildcards.sample}_R1.fastq.gz",
-            f"results/merged/{wildcards.sample}_R2.fastq.gz",
+            "results/merged/{sample}_R1.fastq.gz",
+            "results/merged/{sample}_R2.fastq.gz",
         ]
-    return f"results/merged/{wildcards.sample}_single.fastq.gz"
+    return "results/merged/{sample}_single.fastq.gz"
 
 
-def get_sample_datatype(sample):
-    return samples.loc[[sample], "datatype"].iloc[0]
+def get_group_samples(group):
+    return samples.loc[samples["group"] == group]["sample_name"]
 
 
 def get_markduplicates_input(wildcards):
@@ -283,24 +272,22 @@ def get_primer_bed(wc):
 
 def extract_unique_sample_column_value(sample, col_name):
     result = samples.loc[samples["sample_name"] == sample, col_name].drop_duplicates()
-    if len(result) > 1:
-        raise ValueError(
-            "If a sample is specified multiple times in a samples.tsv "
-            "sheet, all columns except 'group' must contain identical "
-            "entries across the occurrences (rows).\n"
-            f"Here we have sample '{sample}' with multiple entries for "
-            f"the '{col_name}' column, namely:\n"
-            f"{result}\n"
-        )
-
-    result = result.squeeze()
+    if type(result) is not str:
+        if len(result) > 1:
+            raise ValueError(
+                "If a sample is specified multiple times in a samples.tsv"
+                "sheet, all columns except 'group' must contain identical"
+                "entries across the occurrences (rows).\n"
+                f"Here we have sample '{sample}' with multiple entries for"
+                f"the '{col_name}' column, namely:\n"
+                f"{result}\n"
+            )
+        else:
+            result = result.squeeze()
     return result
 
 
 def get_sample_primer_fastas(sample):
-    if not primers_available:
-        return ""
-
     if isinstance(primer_panels, pd.DataFrame):
         panel = extract_unique_sample_column_value(sample, "panel")
         if not pd.isna(primer_panels.loc[panel, "fa2"]):
@@ -319,10 +306,7 @@ def get_sample_primer_fastas(sample):
 
 
 def get_panel_primer_input(panel):
-    if not primers_available:
-        return ""
-
-    if panel == "uniform" or not isinstance(primer_panels, pd.DataFrame):
+    if panel == "uniform":
         if config["primers"]["trimming"].get("primers_fa2", ""):
             return [
                 config["primers"]["trimming"]["primers_fa1"],
@@ -337,9 +321,6 @@ def get_panel_primer_input(panel):
 
 
 def get_primer_regions(wc):
-    if not primers_available:
-        return []
-
     if isinstance(primer_panels, pd.DataFrame):
         panel = extract_unique_sample_column_value(wc.sample, "panel")
         return f"results/primers/{panel}_primer_regions.tsv"
@@ -362,11 +343,20 @@ def get_markduplicates_extra(wc):
     return f"{c} {b} {d}"
 
 
+def get_processed_consensus_input(wildcards):
+    if wildcards.read_type == "se":
+        return "results/consensus/fastq/{}.se.fq".format(wildcards.sample)
+    return [
+        "results/consensus/fastq/{}.1.fq".format(wildcards.sample),
+        "results/consensus/fastq/{}.2.fq".format(wildcards.sample),
+    ]
+
+
 def get_read_group(prefix: str):
     def inner(wildcards):
         """Denote sample name and platform in read group."""
         platform = extract_unique_sample_column_value(wildcards.sample, "platform")
-        return "{prefix}'@RG\tID:{sample}\tSM:{sample}\tPL:{platform}'".format(
+        return r"{prefix}'@RG\tID:{sample}\tSM:{sample}\tPL:{platform}'".format(
             sample=wildcards.sample, platform=platform, prefix=prefix
         )
 
@@ -382,16 +372,7 @@ def get_tabix_params(wildcards):
 
 
 def get_trimmed_fastqs(wc):
-    adapters = units.loc[wc.sample, "adapters"]
-    if adapters.notna().any() and adapters.isna().any():
-        error_msg = (
-            "Mixed adapter configuration for sample {!r}: units={!r}. "
-            "Some units have adapters set and others are NA. "
-            "Fix units.tsv so adapters is set for all units of the sample or NA for all."
-        ).format(wc.sample, list(units.loc[wc.sample, "unit_name"]))
-        raise WorkflowError(error_msg)
-
-    if adapters.notna().all():
+    if units.loc[wc.sample, "adapters"].notna().all():
         return expand(
             "results/trimmed/{sample}/{unit}_{read}.fastq.gz",
             unit=units.loc[wc.sample, "unit_name"],
@@ -410,15 +391,9 @@ def get_trimmed_fastqs(wc):
 def sample_has_primers(wildcards):
     sample_name = wildcards.sample
 
-    if config.get("primers", {}).get("trimming", {}).get("activate", False) and (
-        config.get("primers", {}).get("trimming", {}).get("primers_fa1")
-        or config.get("primers", {}).get("trimming", {}).get("primers_fa2")
-        or (
-            "panel" in samples.columns
-            and samples.loc[samples["sample_name"] == sample_name, "panel"]
-            .notna()
-            .any()
-        )
+    if config["primers"]["trimming"].get("primers_fa1") or (
+        "panel" in samples.columns
+        and samples.loc[samples["sample_name"] == sample_name, "panel"].notna().any()
     ):
         if not is_paired_end(sample_name):
             raise WorkflowError(
@@ -426,15 +401,6 @@ def sample_has_primers(wildcards):
             )
         return True
     return False
-
-
-def get_processed_consensus_input(wildcards):
-    if wildcards.read_type == "se":
-        return "results/consensus/fastq/{}.se.fq".format(wildcards.sample)
-    return [
-        "results/consensus/fastq/{}.1.fq".format(wildcards.sample),
-        "results/consensus/fastq/{}.2.fq".format(wildcards.sample),
-    ]
 
 
 def sample_has_umis(sample):
@@ -468,21 +434,20 @@ def get_shortest_primer_length(primers):
     # set to 32 to match bwa-mem default value considering offset of 2
     min_length = 32
     for primer_file in primers:
-        with open(primer_file, "r") as primer_f:
-            lines = primer_f.readlines()
-        min_primer = min(
-            len(line.strip()) for i, line in enumerate(lines) if i % 2 == 1
-        )
-        min_length = min(min_length, min_primer)
+        with open(primer_file, "r") as p:
+            min_primer = min(
+                [len(p.strip()) for i, p in enumerate(p.readlines()) if i % 2 == 1]
+            )
+            min_length = min(min_length, min_primer)
     return min_length
 
 
 def get_primer_extra(wc, input):
-    extra = f"-R '@RG\tID:{wc.panel}\tSM:{wc.panel}' -L 100"
+    extra = rf"-R '@RG\tID:{wc.panel}\tSM:{wc.panel}' -L 100"
     min_primer_len = get_shortest_primer_length(input.reads)
     # Check if shortest primer is below default values
     if min_primer_len < 32:
-        extra += f" -T {max(1, min_primer_len-2)}"
+        extra += f" -T {min_primer_len-2}"
     if min_primer_len < 19:
         extra += f" -k {min_primer_len}"
     return extra
@@ -536,10 +501,4 @@ def get_pangenome_url(datatype):
         raise ValueError(
             "Unsupported pangenome source. Only 'hprc' is currently supported."
         )
-
-    base_url = config["ref"]["pangenome"].get(
-        "base_url",
-        "https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus",
-    )
-
-    return f"{base_url}/hprc-{version}-mc-{build}/hprc-{version}-mc-{build}.{datatype}"
+    return f"https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus/hprc-{version}-mc-{build}/hprc-{version}-mc-{build}.{datatype}"

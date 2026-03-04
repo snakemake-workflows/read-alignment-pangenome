@@ -1,7 +1,5 @@
-$schema: "https://json-schema.org/draft/2020-12/schema"
-
+$schema: "http://json-schema.org/draft-04/schema#"
 description: row of the units.tsv, representing a sequencing unit, i.e. single-end or paired-end data
-
 type: object
 properties:
   sample_name:
@@ -18,7 +16,6 @@ properties:
     description: path to FASTQ file (may not contain whitespace)
   fq2:
     type: string
-    pattern: "^$|^[^ \t]+$"
     description: path to second FASTQ file (leave empty in case of single-end)
   sra:
     type: string
@@ -30,9 +27,3 @@ properties:
 required:
   - sample_name
   - unit_name
-
-anyOf:
-  - required:
-      - fq1
-  - required:
-      - sra

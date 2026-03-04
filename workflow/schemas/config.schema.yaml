@@ -1,6 +1,6 @@
-$schema: "https://json-schema.org/draft/2020-12/schema"
+$schema: "http://json-schema.org/draft-07/schema#"
 
-description: read-alignment-pangenome workflow configuration (pangenome download + trimming + vg giraffe mapping + postprocessing + CRAM + QC)
+description: read-alignment-pangenome workflow configuration
 
 type: object
 
@@ -15,11 +15,12 @@ properties:
     type: integer
     minimum: 1
     maximum: 128
-    default: 8
 
   ref:
     type: object
     properties:
+      n_chromosomes:
+        type: integer
       species:
         type: string
       release:
@@ -51,30 +52,69 @@ properties:
       trimming:
         type: object
         properties:
+          activate:
+            type: boolean
           primers_fa1:
             type: string
           primers_fa2:
             type: string
           tsv:
             type: string
+          library_error:
+            type: integer
           library_length:
             type: integer
-        required:
-          - tsv
     required:
       - trimming
+
+  remove_duplicates:
+    type: object
+    properties:
+      activate:
+        type: boolean
+    required:
+      - activate
+
+  calc_consensus_reads:
+    type: object
+    properties:
+      activate:
+        type: boolean
+    required:
+      - activate
 
   params:
     type: object
     properties:
       fastp:
         type: string
+      gatk:
+        type: object
+        properties:
+          BaseRecalibrator:
+            type: string
+          applyBQSR:
+            type: string
+        required:
+          - BaseRecalibrator
+          - applyBQSR
+      picard:
+        type: object
+        properties:
+          MarkDuplicates:
+            type: string
+        required:
+          - MarkDuplicates
     required:
       - fastp
+      - gatk
+      - picard
 
 required:
   - samples
   - units
   - ref
   - primers
+  - remove_duplicates
+  - calc_consensus_reads
   - params

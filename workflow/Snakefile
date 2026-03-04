@@ -43,7 +43,7 @@ onerror:
     print("\n--- An error occurred! ---\n")
 
 
-# targets (CRAM + CRAI mandatory)
+# targets (final BAM + BAI)
 # -----------------------------------------------------
 rule only_alignment:
     input:

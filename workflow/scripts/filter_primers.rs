@@ -3,8 +3,7 @@
 //! `cargo` "language".
 //!
 //! ```cargo
-//! [package]
-//! edition = "2021"
+//! cargo-features = ["edition2021"]
 //! [dependencies]
 //! indexmap = "1.8"
 //! noodles = { version = "0.18.0", features = ["bam", "sam", "bgzf"] }
@@ -22,14 +21,14 @@ use std::i32;
 use std::io::BufWriter;
 use std::str::FromStr;
 
+
 fn main() -> Result<(), Box<dyn Error>> {
     snakemake.redirect_stderr(&snakemake.log[0])?;
     let mut input = File::open(&snakemake.input[0]).map(Reader::new)?;
     let header = input.read_header()?.parse()?;
     let reference_sequences = input.read_reference_sequences()?;
 
-    let mut primerless_writer =
-        build_writer(&snakemake.output.primerless, &header, &reference_sequences)?;
+    let mut primerless_writer = build_writer(&snakemake.output.primerless, &header, &reference_sequences)?;
     let mut primer_writer = build_writer(&snakemake.output.primers, &header, &reference_sequences)?;
 
     let ra_tag: Tag = Tag::from_str("ra")?;
@@ -40,26 +39,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         let data = record.data();
         match data.get(ra_tag) {
             Some(Ok(_)) => {
-                let (Some(ref_id), Some(pos_val)) = (
-                    record.reference_sequence_id(),
-                    record.position(),
-                ) else {
-                    continue; // skip unmapped ra-tagged records
-                };
-
-                let idx = i32::from(ref_id);
+                let idx = i32::from(record.reference_sequence_id().unwrap());
                 let chr = reference_sequences
                     .get_index(idx as usize)
                     .unwrap()
                     .0
                     .as_bytes();
-                let pos: i32 = i32::from(pos_val);
+                let pos: i32 = i32::from(record.position().unwrap());
                 primary_records.insert((chr, pos, record.read_name().unwrap().to_owned()));
             }
             _ => continue,
         }
     }
-
     let mut input = File::open(&snakemake.input[0]).map(Reader::new)?;
     input.read_header()?;
     input.read_reference_sequences()?;
@@ -67,7 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     for result in input.records() {
         let record = result?;
         let data = record.data();
-        if data.get(ra_tag).map_or(false, |v| v.is_ok())
+        if data.get(ra_tag).is_some()
             || data.get(ma_tag).is_some()
             || is_secondary_alignment(&record, &primary_records)?
         {

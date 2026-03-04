@@ -11,94 +11,73 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  Formatting:
+  Testing:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Formatting
-        uses: super-linter/super-linter@v7
-        env:
-          VALIDATE_ALL_CODEBASE: true
-          DEFAULT_BRANCH: main
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_SNAKEMAKE_SNAKEFMT: true
-          VALIDATE_YAML_PRETTIER: true
-
-  Linting:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Lint workflow
-        uses: snakemake/snakemake-github-action@v2
-        with:
-          directory: .
-          snakefile: workflow/Snakefile
-          args: "--lint"
-
-  Validate:
-    runs-on: ubuntu-latest
-    needs:
-      - Formatting
-      - Linting
     strategy:
       fail-fast: true
       matrix:
         case:
           - name: default
-            configfile: .test/config-default/config.yaml
+            args: >-
+              --configfile .test/config-default/config.yaml
+              --show-failed-logs
+              --cores 2
+              --conda-cleanup-pkgs cache
+              --all-temp
+              --dryrun
+            cleanup: false
           - name: primers off
-            configfile: .test/config-primers-off/config.yaml
+            args: >-
+              --configfile .test/config-primers-off/config.yaml
+              --show-failed-logs
+              --cores 2
+              --conda-cleanup-pkgs cache
+              --all-temp
+              --dryrun
+            cleanup: false
           - name: pangenome on
-            configfile: .test/config-pangenome-on/config.yaml
+            args: >-
+              --configfile .test/config-pangenome-on/config.yaml
+              --show-failed-logs
+              --cores 2
+              --conda-cleanup-pkgs cache
+              --all-temp
+              --dryrun
+            cleanup: false
           - name: sra
-            configfile: .test/config-sra/config.yaml
-    name: Validate (${{ matrix.case.name }})
+            args: >-
+              --configfile .test/config-sra/config.yaml
+              --show-failed-logs
+              --cores 2
+              --conda-cleanup-pkgs cache
+              --all-temp
+              --dryrun
+            cleanup: false
+    name: test ${{ matrix.case.name }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: update apt
+        run: sudo apt-get update
+
+      - name: Free Disk Space (Ubuntu)
+        if: ${{ matrix.case.cleanup }}
+        uses: jlumbroso/free-disk-space@v1.3.1
         with:
-          fetch-depth: 0
-      - name: Validate workflow (dry-run)
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - uses: actions/checkout@v4
+
+      - name: run workflow
         uses: snakemake/snakemake-github-action@v2
         with:
           directory: .test
           snakefile: workflow/Snakefile
-          args: >-
-            --configfile ${{ matrix.case.configfile }}
-            --sdm conda
-            --show-failed-logs
-            --cores 2
-            --conda-cleanup-pkgs cache
-            --all-temp
-            -n
-  Testing:
-    runs-on: ubuntu-latest
-    needs:
-      - Validate
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Test workflow (execute)
-        uses: snakemake/snakemake-github-action@v2
-        with:
-          directory: .test
-          snakefile: workflow/Snakefile
-          args: >-
-            --sdm conda
-            --show-failed-logs
-            --cores 2
-            --conda-cleanup-pkgs cache
-            --all-temp
-            --configfile .test/config-default/config.yaml
-            --report report.zip
+          args: >
+            --sdm conda --resources mem_mb=16000 ${{ matrix.case.args }}
           show-disk-usage-on-error: true
-      - name: Upload Snakemake report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: snakemake-report
-          path: .test/report.zip
