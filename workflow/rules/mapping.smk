@@ -124,15 +124,12 @@ rule add_read_group:
         "logs/samtools/add_rg/{sample}.log",
     params:
         read_group=get_read_group(""),
-        compression_threads=lambda wildcards, threads: (
-            f"-@{threads}" if threads > 1 else ""
-        ),
     conda:
         "../envs/samtools.yaml"
     threads: 4
     shell:
         "samtools addreplacerg {input} -o {output} -r {params.read_group} "
-        "-w {params.compression_threads} 2> {log}"
+        "-w -@{threads} 2> {log}"
 
 
 rule sort_alignments:
