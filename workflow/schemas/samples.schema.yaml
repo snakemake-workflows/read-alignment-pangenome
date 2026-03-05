@@ -1,4 +1,4 @@
-$schema: "http://json-schema.org/draft-07/schema#"
+$schema: "https://json-schema.org/draft/2020-12/schema"
 
 description: an entry in the sample sheet
 
@@ -8,16 +8,9 @@ properties:
     type: string
     description: sample name/identifier (alphanumeric string, that may additionally contain '_' and '-')
     pattern: "^[a-zA-Z_0-9-]+$"
-
-  group:
-    type: string
-    description: group of samples called jointly (alphanumeric string, that may additionally contain '_' and '-')
-    pattern: "^[a-zA-Z_0-9-]+$"
-
   panel:
     type: string
     description: ID of primer panel
-
   platform:
     type: string
     enum:
@@ -30,19 +23,16 @@ properties:
       - "ONT"
       - "PACBIO"
     description: used sequencing platform
-
   umi_read:
     type: string
-    pattern: "^(fq1|fq2|both)$"
+    pattern: "^(fq[1,2]|both)$"
     description: fq1 or fq2 for read containing umis
-
   umi_len:
     type: integer
     description: length of UMI
 
 required:
   - sample_name
-  - group
   - platform
 
 dependencies:

@@ -6,18 +6,21 @@ from snakemake.exceptions import WorkflowError
 
 validate(config, schema="../schemas/config.schema.yaml")
 
+
 samples = (
     pd.read_csv(
         config["samples"],
         sep="\t",
-        dtype={"sample_name": str, "group": str, "umi_len": "Int64"},
+        dtype={"sample_name": str, "umi_len": "Int64"},
         comment="#",
     )
     .set_index("sample_name", drop=False)
     .sort_index()
 )
-if not "mutational_burden_events" in samples.columns:
-    samples["mutational_burden_events"] = pd.NA
+
+wildcard_constraints:
+    sample="|".join(samples["sample_name"]),
+
 
 # construct genome name
 datatype_genome = "dna"
@@ -31,14 +34,6 @@ genome_fai = f"{genome}.fai"
 genome_dict = f"{genome_prefix}.dict"
 pangenome_name = f"pangenome.{species}.{build}"
 pangenome_prefix = f"resources/{pangenome_name}"
-
-delly_excluded_regions = {
-    ("homo_sapiens", "GRCh38"): "human.hg38",
-    ("homo_sapiens", "GRCh37"): "human.hg19",
-}
-
-mutational_signature_vaf_thresholds = list(range(5, 101, 5))
-
 
 def _group_or_sample(row):
     group = row.get("group", None)
@@ -166,10 +161,6 @@ def get_fastp_pipe_input(wildcards):
     return get_raw_reads(wildcards.sample, wildcards.unit, wildcards.fq)
 
 
-def get_fastqc_input(wildcards):
-    return get_raw_reads(wildcards.sample, wildcards.unit, wildcards.fq)[0]
-
-
 def get_fastp_adapters(wildcards):
     unit = units.loc[wildcards.sample].loc[wildcards.unit]
     try:
@@ -215,10 +206,6 @@ def get_map_reads_input(wildcards):
             "results/merged/{sample}_R2.fastq.gz",
         ]
     return "results/merged/{sample}_single.fastq.gz"
-
-
-def get_group_samples(group):
-    return samples.loc[samples["group"] == group]["sample_name"]
 
 
 def get_markduplicates_input(wildcards):
@@ -451,42 +438,6 @@ def get_primer_extra(wc, input):
     if min_primer_len < 19:
         extra += f" -k {min_primer_len}"
     return extra
-
-
-def get_fastqc_results(wildcards):
-    group_samples = get_group_samples(wildcards.group)
-    sample_units = units.loc[group_samples]
-    sra_units = pd.isna(sample_units["fq1"])
-    paired_end_units = sra_units | ~pd.isna(sample_units["fq2"])
-
-    # fastqc
-    pattern = "results/qc/fastqc/{unit.sample_name}/{unit.unit_name}.{fq}_fastqc.zip"
-    yield from expand(pattern, unit=sample_units.itertuples(), fq="fq1")
-    yield from expand(
-        pattern, unit=sample_units[paired_end_units].itertuples(), fq="fq2"
-    )
-
-    # fastp
-    if sample_units["adapters"].notna().all():
-        pattern = "results/trimmed/{unit.sample_name}/{unit.unit_name}.{mode}.qc.html"
-        yield from expand(
-            pattern, unit=sample_units[paired_end_units].itertuples(), mode="paired"
-        )
-        yield from expand(
-            pattern, unit=sample_units[~paired_end_units].itertuples(), mode="single"
-        )
-
-    # samtools idxstats
-    yield from expand(
-        "results/qc/{sample}.bam.idxstats",
-        sample=group_samples,
-    )
-
-    # samtools stats
-    yield from expand(
-        "results/qc/{sample}.bam.stats",
-        sample=group_samples,
-    )
 
 
 def get_pangenome_url(datatype):

@@ -1,8 +1,6 @@
 samples: "config-primers-off/samples.tsv"
 units: "config-primers-off/units.tsv"
 
-kmc_threads: 8
-
 remove_duplicates:
   activate: false
 
@@ -20,7 +18,6 @@ ref:
 
 primers:
   trimming:
-    activate: false
     primers_fa1: ""
     primers_fa2: ""
     tsv: "config-primers-off/primers.tsv"

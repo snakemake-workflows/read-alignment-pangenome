@@ -1,18 +1,6 @@
-# Workflow config (derived from dna-seq-varlociraptor)
-# Scope: reference/pangenome preparation → trimming → read mapping → postprocessing → final BAM+BAI
-
 samples: config/samples.tsv
+
 units: config/units.tsv
-
-# Threads used by KMC (k-mer counting)
-# (Used by rule count_sample_kmers via config.get("kmc_threads", 8))
-kmc_threads: 16
-
-remove_duplicates:
-  activate: false
-
-calc_consensus_reads:
-  activate: false
 
 ref:
   # Number of chromosomes to consider for calling.
@@ -39,7 +27,6 @@ ref:
 # provided or primer panels are set in samplesheet
 primers:
   trimming:
-    activate: true
     # path to fasta files containing primer sequences
     primers_fa1: ""
     primers_fa2: ""
@@ -51,10 +38,21 @@ primers:
     # If 0 or not set the bowtie default value of 250 will be used
     library_length: 0
 
+# If calc_consensus_reads is activated duplicates will be merged
+remove_duplicates:
+  activate: true
+
+# Experimental: calculate consensus reads from PCR duplicates.
+# if 'remove_duplicates' is deactivate only overlapping pairs will be merged
+calc_consensus_reads:
+  activate: false
+
 params:
-  fastp: "--detect_adapter_for_pe"
+  fastp: ""
   picard:
     MarkDuplicates: "--VALIDATION_STRINGENCY LENIENT"
   gatk:
     BaseRecalibrator: ""
     applyBQSR: ""
+  get_sra:
+    extra: ""

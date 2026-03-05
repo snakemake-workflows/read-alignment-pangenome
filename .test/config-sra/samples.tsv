@@ -1,2 +1,4 @@
-sample_name	group	platform	panel	datatype
-test	test	ILLUMINA	dummy	dna
+sample_name	platform
+PD12A	ILLUMINA
+PD13B	ILLUMINA
+PD09A	ILLUMINA

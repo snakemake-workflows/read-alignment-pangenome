@@ -11,8 +11,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  
+  Formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Formatting
+        uses: super-linter/super-linter@v8
+        env:
+          VALIDATE_ALL_CODEBASE: false
+          DEFAULT_BRANCH: master
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_SNAKEMAKE_SNAKEFMT: true
+          VALIDATE_YAML_PRETTIER: true
+
+  Linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint workflow
+        uses: snakemake/snakemake-github-action@v2
+        with:
+          directory: .
+          snakefile: workflow/Snakefile
+          args: "--lint"
+          
   Testing:
     runs-on: ubuntu-latest
+    needs:
+      - Formatting
+      - Linting
     strategy:
       fail-fast: true
       matrix:
@@ -44,15 +74,11 @@ jobs:
               --all-temp
               --dryrun
             cleanup: false
-          - name: sra
+          - name: sra download
             args: >-
               --configfile .test/config-sra/config.yaml
-              --show-failed-logs
-              --cores 2
-              --conda-cleanup-pkgs cache
-              --all-temp
-              --dryrun
-            cleanup: false
+            report: true
+            cleanup: true
     name: test ${{ matrix.case.name }}
 
     steps:
@@ -63,7 +89,12 @@ jobs:
         if: ${{ matrix.case.cleanup }}
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
           tool-cache: false
+
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
           android: true
           dotnet: true
           haskell: true
@@ -71,7 +102,7 @@ jobs:
           docker-images: false
           swap-storage: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: run workflow
         uses: snakemake/snakemake-github-action@v2
@@ -79,5 +110,5 @@ jobs:
           directory: .test
           snakefile: workflow/Snakefile
           args: >
-            --sdm conda --resources mem_mb=16000 ${{ matrix.case.args }}
+            --conda-cleanup-pkgs cache --sdm conda --resources mem_mb=16000 --cores 10 ${{ matrix.case.args }}
           show-disk-usage-on-error: true

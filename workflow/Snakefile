@@ -1,23 +1,17 @@
-# Scope: pangenome download → trimming → mapping → postprocessing → final recalibrated BAM.
-# Final outputs:
-#   results/recal/{sample}.bam
-#   results/recal/{sample}.bai
-# Variant calling (BCF/VCF), annotation, filtering, tables, etc. are intentionally out of scope.
-
 from snakemake.utils import min_version
 
 min_version("9.1.0")
-
-
-# prevent {sample} from swallowing suffixes like ".sorted"
-wildcard_constraints:
-    sample=r"[^\.\/]+",
 
 
 # load configuration
 # -----------------------------------------------------
 configfile: "config/config.yaml"
 
+inputflags:
+    access.sequential,
+
+# Allow users to fix the underlying OS via singularity.
+container: "docker://continuumio/miniconda3"
 
 # load rules
 # -----------------------------------------------------
@@ -43,15 +37,7 @@ onerror:
     print("\n--- An error occurred! ---\n")
 
 
-# targets (final BAM + BAI)
-# -----------------------------------------------------
-rule only_alignment:
-    input:
-        expand("results/recal/{sample}.bam", sample=list(samples.index)),
-        expand("results/recal/{sample}.bai", sample=list(samples.index)),
-
-
 rule all:
     input:
-        rules.only_alignment.input,
+        expand("results/recal/{sample}.bam", sample=list(samples.index)),
     default_target: True

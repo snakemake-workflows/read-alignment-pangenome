@@ -2,6 +2,8 @@ rule get_sra:
     output:
         "sra/{accession}_1.fastq.gz",
         "sra/{accession}_2.fastq.gz",
+    params:
+        extra=lookup(within=config, dpath="params/get_sra/extra", default=""),
     log:
         "logs/get-sra/{accession}.log",
     wrapper:

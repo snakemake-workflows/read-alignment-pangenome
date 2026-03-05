@@ -1,2 +1,2 @@
-sample_name	group	platform	panel	datatype
-test	test	ILLUMINA	dummy	dna
+sample_name	platform	panel
+test	ILLUMINA	dummy

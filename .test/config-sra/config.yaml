@@ -1,8 +1,6 @@
 samples: "config-sra/samples.tsv"
 units: "config-sra/units.tsv"
 
-kmc_threads: 8
-
 remove_duplicates:
   activate: false
 
@@ -10,9 +8,15 @@ calc_consensus_reads:
   activate: false
 
 ref:
-  species: "homo_sapiens"
-  release: 111
-  build: "GRCh38"
+  # Number of chromosomes to consider for calling.
+  # The first n entries of the FASTA will be considered.
+  n_chromosomes: 17
+  # Ensembl species name
+  species: saccharomyces_cerevisiae
+  # Ensembl release
+  release: 110
+  # Genome build
+  build: R64-1-1
   pangenome:
     activate: false
     source: "hprc"
@@ -20,16 +24,15 @@ ref:
 
 primers:
   trimming:
-    activate: false
     primers_fa1: ""
     primers_fa2: ""
-    tsv: "config-sra/primers.tsv"
+    tsv: ""
     library_length: 0
 
 params:
   fastp: ""
   picard:
-    MarkDuplicates: "--VALIDATION_STRINGENCY LENIENT"
+    MarkDuplicates: ""
   gatk:
     BaseRecalibrator: ""
     applyBQSR: ""
