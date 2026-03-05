@@ -7,11 +7,14 @@ min_version("9.1.0")
 # -----------------------------------------------------
 configfile: "config/config.yaml"
 
+
 inputflags:
     access.sequential,
 
+
 # Allow users to fix the underlying OS via singularity.
 container: "docker://continuumio/miniconda3"
+
 
 # load rules
 # -----------------------------------------------------

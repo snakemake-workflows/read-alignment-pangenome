@@ -18,6 +18,7 @@ samples = (
     .sort_index()
 )
 
+
 wildcard_constraints:
     sample="|".join(samples["sample_name"]),
 
@@ -34,6 +35,7 @@ genome_fai = f"{genome}.fai"
 genome_dict = f"{genome_prefix}.dict"
 pangenome_name = f"pangenome.{species}.{build}"
 pangenome_prefix = f"resources/{pangenome_name}"
+
 
 def _group_or_sample(row):
     group = row.get("group", None)
