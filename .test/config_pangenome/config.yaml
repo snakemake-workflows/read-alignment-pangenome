@@ -1,18 +1,19 @@
-samples: "config-primers-off/samples.tsv"
-units: "config-primers-off/units.tsv"
+samples: "config_pangenome/samples.tsv"
+
+units: "config_pangenome/units.tsv"
 
 remove_duplicates:
-  activate: false
+  activate: true
 
 calc_consensus_reads:
-  activate: false
+  activate: true
 
 ref:
   species: "homo_sapiens"
   release: 111
   build: "GRCh38"
   pangenome:
-    activate: false
+    activate: true
     source: "hprc"
     version: "v1.1"
 
@@ -20,7 +21,7 @@ primers:
   trimming:
     primers_fa1: ""
     primers_fa2: ""
-    tsv: "config-primers-off/primers.tsv"
+    tsv: "config_pangenome/primers.tsv"
     library_length: 0
 
 params:

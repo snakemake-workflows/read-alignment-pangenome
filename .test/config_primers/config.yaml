@@ -1,0 +1,39 @@
+samples: "config_primers/samples.tsv"
+
+units: "config_primers/units.tsv"
+
+remove_duplicates:
+  activate: false
+
+calc_consensus_reads:
+  activate: false
+
+ref:
+  # Number of chromosomes to consider for calling.
+  # The first n entries of the FASTA will be considered.
+  n_chromosomes: 17
+  # Ensembl species name
+  species: saccharomyces_cerevisiae
+  # Ensembl release (make sure to take one where snpeff data is available, check 'snpEff databases' output)
+  release: 98
+  snpeff_release: 86
+  # Genome build
+  build: R64-1-1
+  pangenome:
+    activate: false
+    source: "hprc"
+    version: "v1.1"
+
+primers:
+  trimming:
+    primers_fa1: "a.scerevisiae.1_primers.fq"
+    primers_fa2: "a.scerevisiae.2_primers.fq"
+    library_length: 400
+
+params:
+  fastp: ""
+  picard:
+    MarkDuplicates: ""
+  gatk:
+    BaseRecalibrator: ""
+    applyBQSR: ""

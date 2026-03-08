@@ -46,36 +46,33 @@ jobs:
       fail-fast: true
       matrix:
         case:
-          - name: default
+          - name: simple
             args: >-
-              --configfile .test/config-default/config.yaml
+              --configfile .test/config_simple/config.yaml
               --show-failed-logs
               --cores 2
               --conda-cleanup-pkgs cache
               --all-temp
-              --dryrun
+            report: true
             cleanup: false
-          - name: primers off
+          - name: primers
             args: >-
-              --configfile .test/config-primers-off/config.yaml
-              --show-failed-logs
-              --cores 2
-              --conda-cleanup-pkgs cache
-              --all-temp
-              --dryrun
+              --configfile .test/config_primers/config.yaml
+            report: true
             cleanup: false
-          - name: pangenome on
+          - name: pangenome
             args: >-
-              --configfile .test/config-pangenome-on/config.yaml
+              --configfile .test/config_pangenome/config.yaml
               --show-failed-logs
               --cores 2
               --conda-cleanup-pkgs cache
               --all-temp
               --dryrun
+            report: false
             cleanup: false
           - name: sra download
             args: >-
-              --configfile .test/config-sra/config.yaml
+              --configfile .test/config_sra/config.yaml
             report: true
             cleanup: true
     name: test ${{ matrix.case.name }}

@@ -1,5 +1,6 @@
-samples: "config-sra/samples.tsv"
-units: "config-sra/units.tsv"
+samples: "config_simple/samples.tsv"
+
+units: "config_simple/units.tsv"
 
 remove_duplicates:
   activate: false
@@ -14,7 +15,7 @@ ref:
   # Ensembl species name
   species: saccharomyces_cerevisiae
   # Ensembl release
-  release: 110
+  release: 100
   # Genome build
   build: R64-1-1
   pangenome:
@@ -32,7 +33,7 @@ primers:
 params:
   fastp: ""
   picard:
-    MarkDuplicates: ""
+    MarkDuplicates: "--VALIDATION_STRINGENCY LENIENT"
   gatk:
     BaseRecalibrator: ""
     applyBQSR: ""
