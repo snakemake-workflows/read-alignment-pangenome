@@ -2,7 +2,7 @@ rule get_genome:
     output:
         genome,
     log:
-        "results/logs/get-genome.log",
+        "logs/get-genome.log",
     params:
         species=config["ref"]["species"],
         datatype="dna",
@@ -20,10 +20,10 @@ rule genome_faidx:
     output:
         genome_fai,
     log:
-        "results/logs/genome-faidx.log",
+        "logs/genome-faidx.log",
     cache: "omit-software"
     wrapper:
-        "v8.1.1/bio/samtools/faidx"
+        "v2.3.2/bio/samtools/faidx"
 
 
 rule genome_dict:
@@ -32,12 +32,45 @@ rule genome_dict:
     output:
         genome_dict,
     log:
-        "results/logs/samtools/create_dict.log",
+        "logs/samtools/create_dict.log",
     conda:
         "../envs/samtools.yaml"
     cache: "omit-software"
     shell:
-        "samtools dict {input} > {output} 2> {log}"
+        "samtools dict {input} > {output} 2> {log} "
+
+
+rule get_known_variants:
+    input:
+        # use fai to annotate contig lengths for GATK BQSR
+        fai=genome_fai,
+    output:
+        vcf="resources/variation.vcf.gz",
+    log:
+        "logs/get-known-variants.log",
+    params:
+        species=config["ref"]["species"],
+        release=config["ref"]["release"],
+        build=config["ref"]["build"],
+        type="all",
+        chromosome=config["ref"].get("chromosome"),
+    cache: "omit-software"
+    wrapper:
+        "v7.5.0/bio/reference/ensembl-variation"
+
+
+rule remove_iupac_codes:
+    input:
+        "resources/variation.vcf.gz",
+    output:
+        "resources/variation.noiupac.vcf.gz",
+    log:
+        "logs/fix-iupac-alleles.log",
+    conda:
+        "../envs/rbt.yaml"
+    cache: "omit-software"
+    shell:
+        "(rbt vcf-fix-iupac-alleles < {input} | bcftools view -Oz > {output}) 2> {log}"
 
 
 rule bwa_index:
@@ -46,10 +79,10 @@ rule bwa_index:
     output:
         idx=multiext(genome, ".amb", ".ann", ".bwt", ".pac", ".sa"),
     log:
-        "results/logs/bwa_index.log",
+        "logs/bwa_index.log",
     cache: True
     wrapper:
-        "v8.1.1/bio/bwa/index"
+        "v2.3.2/bio/bwa/index"
 
 
 rule get_pangenome:
@@ -60,9 +93,7 @@ rule get_pangenome:
     wildcard_constraints:
         ext="hapl|gbz",
     log:
-        "results/logs/pangenome/{ext}.log",
+        "logs/pangenome/{ext}.log",
     cache: "omit-software"
-    conda:
-        "../envs/curl.yaml"
     shell:
         "curl -o {output} {params.url} 2> {log}"

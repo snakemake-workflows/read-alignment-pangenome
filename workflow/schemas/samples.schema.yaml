@@ -1,44 +1,40 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
 
-description: an entry in the sample sheet for the read-alignment-pangenome workflow
+description: an entry in the sample sheet
 
 type: object
 properties:
   sample_name:
     type: string
-    description: sample name/identifier (alphanumeric, may include '_' and '-')
+    description: sample name/identifier (alphanumeric string, that may additionally contain '_' and '-')
     pattern: "^[a-zA-Z_0-9-]+$"
-
-  group:
-    type: string
-    description: group of samples
-    pattern: "^[a-zA-Z_0-9-]+$"
-
   panel:
     type: string
-    description: ID of primer panel (used if primers are configured)
-
+    description: ID of primer panel
   platform:
     type: string
     enum:
-      [
-        "CAPILLARY",
-        "LS454",
-        "ILLUMINA",
-        "SOLID",
-        "HELICOS",
-        "IONTORRENT",
-        "ONT",
-        "PACBIO",
-      ]
-    description: sequencing platform (used for read group metadata)
-
-  datatype:
+      - "CAPILLARY"
+      - "LS454"
+      - "ILLUMINA"
+      - "SOLID"
+      - "HELICOS"
+      - "IONTORRENT"
+      - "ONT"
+      - "PACBIO"
+    description: used sequencing platform
+  umi_read:
     type: string
-    enum: [dna, rna]
-    description: datatype (optional; kept for compatibility)
+    pattern: "^(fq[1,2]|both)$"
+    description: fq1 or fq2 for read containing umis
+  umi_len:
+    type: integer
+    description: length of UMI
 
 required:
   - sample_name
   - platform
-  - group
+
+dependencies:
+  umi_read:
+    - umi_len

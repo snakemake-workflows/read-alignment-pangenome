@@ -5,7 +5,7 @@
 [![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
 [![workflow catalog](https://img.shields.io/badge/Snakemake%20workflow%20catalog-darkgreen)](https://snakemake.github.io/snakemake-workflow-catalog/docs/workflows/snakemake-workflows/read-alignment-pangenome)
 
-A Snakemake workflow for aligning sequencing reads to a pangenome graph with **vg giraffe**, producing **sorted CRAM + CRAI** per sample.
+A Snakemake workflow for aligning sequencing reads, including pangenome-graph alignment with vg giraffe, and producing final BAM + BAI per sample.
 
 
 - [Snakemake workflow: read-alignment-pangenome](#snakemake-workflow-read-alignment-pangenome)
@@ -28,10 +28,12 @@ The main alignment target is:
 
 - `only_alignment`
 
-Expected outputs (per sample):
+Expected final outputs (per sample):
 
-- `<results>/mapped/vg/{sample}.sorted.cram`
-- `<results>/mapped/vg/{sample}.sorted.cram.crai`
+- `<results>/recal/{sample}.bam`
+- `<results>/recal/{sample}.bai`
+
+The workflow currently produces final recalibrated BAM + BAI files per sample.
 
 > Note: If `adapters` is empty/NA in `units.tsv`, trimming with fastp is bypassed and raw reads are used.
 

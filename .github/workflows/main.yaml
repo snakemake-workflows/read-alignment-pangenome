@@ -6,15 +6,19 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   Formatting:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Formatting
-        uses: super-linter/super-linter@v7
+        uses: super-linter/super-linter@v8
         env:
           VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: main
@@ -36,14 +40,71 @@ jobs:
   Testing:
     runs-on: ubuntu-latest
     needs:
-      - Linting
       - Formatting
-    steps:
-      - uses: actions/checkout@v4
+      - Linting
+    strategy:
+      fail-fast: true
+      matrix:
+        case:
+          - name: simple
+            args: >-
+              --configfile .test/config_simple/config.yaml
+              --show-failed-logs
+              --cores 2
+              --conda-cleanup-pkgs cache
+              --all-temp
+            report: true
+            cleanup: false
+          - name: primers
+            args: >-
+              --configfile .test/config_primers/config.yaml
+            report: true
+            cleanup: false
+          - name: pangenome
+            args: >-
+              --configfile .test/config_pangenome/config.yaml
+              --show-failed-logs
+              --cores 2
+              --conda-cleanup-pkgs cache
+              --all-temp
+              --dryrun
+            report: false
+            cleanup: false
+          - name: sra download
+            args: >-
+              --configfile .test/config_sra/config.yaml
+            report: true
+            cleanup: true
+    name: test ${{ matrix.case.name }}
 
-      - name: Test workflow
+    steps:
+      - name: update apt
+        run: sudo apt-get update
+
+      - name: Free Disk Space (Ubuntu)
+        if: ${{ matrix.case.cleanup }}
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: false
+
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - uses: actions/checkout@v5
+
+      - name: run workflow
         uses: snakemake/snakemake-github-action@v2
         with:
           directory: .test
           snakefile: workflow/Snakefile
-          args: "--sdm conda --show-failed-logs --cores 2 --conda-cleanup-pkgs cache --all-temp -n"
+          args: >
+            --conda-cleanup-pkgs cache --sdm conda --resources mem_mb=16000 --cores 10 ${{ matrix.case.args }}
+          show-disk-usage-on-error: true

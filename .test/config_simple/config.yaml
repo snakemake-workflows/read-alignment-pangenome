@@ -1,0 +1,39 @@
+samples: "config_simple/samples.tsv"
+
+units: "config_simple/units.tsv"
+
+remove_duplicates:
+  activate: false
+
+calc_consensus_reads:
+  activate: false
+
+ref:
+  # Number of chromosomes to consider for calling.
+  # The first n entries of the FASTA will be considered.
+  n_chromosomes: 17
+  # Ensembl species name
+  species: saccharomyces_cerevisiae
+  # Ensembl release
+  release: 100
+  # Genome build
+  build: R64-1-1
+  pangenome:
+    activate: false
+    source: "hprc"
+    version: "v1.1"
+
+primers:
+  trimming:
+    primers_fa1: ""
+    primers_fa2: ""
+    tsv: ""
+    library_length: 0
+
+params:
+  fastp: ""
+  picard:
+    MarkDuplicates: "--VALIDATION_STRINGENCY LENIENT"
+  gatk:
+    BaseRecalibrator: ""
+    applyBQSR: ""

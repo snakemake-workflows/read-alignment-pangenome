@@ -1,0 +1,33 @@
+samples: "config_pangenome/samples.tsv"
+
+units: "config_pangenome/units.tsv"
+
+remove_duplicates:
+  activate: true
+
+calc_consensus_reads:
+  activate: true
+
+ref:
+  species: "homo_sapiens"
+  release: 111
+  build: "GRCh38"
+  pangenome:
+    activate: true
+    source: "hprc"
+    version: "v1.1"
+
+primers:
+  trimming:
+    primers_fa1: ""
+    primers_fa2: ""
+    tsv: "config_pangenome/primers.tsv"
+    library_length: 0
+
+params:
+  fastp: ""
+  picard:
+    MarkDuplicates: "--VALIDATION_STRINGENCY LENIENT"
+  gatk:
+    BaseRecalibrator: ""
+    applyBQSR: ""

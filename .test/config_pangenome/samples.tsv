@@ -1,2 +1,2 @@
 sample_name	platform	panel	umi_read	umi_len
-SRR702070	ILLUMINA
+test	ILLUMINA	dummy	fq2	12

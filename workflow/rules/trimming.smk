@@ -1,9 +1,11 @@
 rule get_sra:
     output:
-        "resources/sra/{accession}_1.fastq.gz",
-        "resources/sra/{accession}_2.fastq.gz",
+        "sra/{accession}_1.fastq.gz",
+        "sra/{accession}_2.fastq.gz",
+    params:
+        extra=lookup(within=config, dpath="params/get_sra/extra", default=""),
     log:
-        "results/logs/get-sra/{accession}.log",
+        "logs/get-sra/{accession}.log",
     wrapper:
         "v7.6.0/bio/sra-tools/fasterq-dump"
 
@@ -12,14 +14,12 @@ rule fastp_pipe:
     input:
         get_fastp_pipe_input,
     output:
-        pipe("results/pipe/fastp/{sample}/{unit}.{fq}.{ext}"),
+        pipe("pipe/fastp/{sample}/{unit}.{fq}.{ext}"),
     log:
-        "results/logs/pipe-fastqs/fastp/{sample}-{unit}.{fq}.{ext}.log",
+        "logs/pipe-fastqs/fastp/{sample}-{unit}.{fq}.{ext}.log",
     wildcard_constraints:
         ext=r"fastq|fastq\.gz",
-    threads: 0
-    conda:
-        "../envs/coreutils.yaml"
+    threads: 0  # this does not need CPU
     shell:
         "cat {input} > {output} 2> {log}"
 
@@ -32,13 +32,13 @@ rule fastp_se:
         html="results/trimmed/{sample}/{unit}.single.qc.html",
         json="results/trimmed/{sample}/{unit}.single.json",
     log:
-        "results/logs/fastp/se/{sample}_{unit}.log",
+        "logs/fastp/se/{sample}_{unit}.log",
     params:
         adapters=get_fastp_adapters,
         extra=get_fastp_extra,
     threads: 8
     wrapper:
-        "v7.6.0/bio/fastp"
+        "v6.2.0/bio/fastp"
 
 
 rule fastp_pe:
@@ -52,13 +52,13 @@ rule fastp_pe:
         html="results/trimmed/{sample}/{unit}.paired.qc.html",
         json="results/trimmed/{sample}/{unit}.paired.json",
     log:
-        "results/logs/fastp/pe/{sample}_{unit}.log",
+        "logs/fastp/pe/{sample}_{unit}.log",
     params:
         adapters=get_fastp_adapters,
         extra=get_fastp_extra,
     threads: 8
     wrapper:
-        "v7.6.0/bio/fastp"
+        "v6.2.0/bio/fastp"
 
 
 rule merge_trimmed_fastqs:
@@ -67,10 +67,8 @@ rule merge_trimmed_fastqs:
     output:
         "results/merged/{sample}_{read}.fastq.gz",
     log:
-        "results/logs/merge-fastqs/trimmed/{sample}_{read}.log",
+        "logs/merge-fastqs/trimmed/{sample}_{read}.log",
     wildcard_constraints:
         read="single|R1|R2",
-    conda:
-        "../envs/coreutils.yaml"
     shell:
         "cat {input} > {output} 2> {log}"

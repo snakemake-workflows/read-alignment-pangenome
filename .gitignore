@@ -12,3 +12,7 @@ workflow/notebooks/.ipynb_checkpoints/**
 **/Rplots.pdf
 __pycache__/
 *.pyc
+
+# local backups
+workflow/rules/*.bak
+workflow/rules/*.smk.*.bak

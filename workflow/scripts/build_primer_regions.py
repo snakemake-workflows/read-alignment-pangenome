@@ -10,33 +10,28 @@ def parse_bed(log_file, out):
         chunksize=chunksize,
         usecols=[0, 1, 2, 5],
     ):
-        invalid_mask = ~data_primers[5].isin(["+", "-"])
-        if invalid_mask.any():
-            for row_id in data_primers.index[invalid_mask]:
+        for row in data_primers.iterrows():
+            row_id = row[0]
+            row = row[1]
+            if row[5] == "+":
+                print(
+                    "{chrom}\t{start}\t{end}\t-1\t-1".format(
+                        chrom=row[0], start=row[1] + 1, end=row[2]
+                    ),
+                    file=out,
+                )
+            elif row[5] == "-":
+                print(
+                    "{chrom}\t-1\t-1\t{start}\t{end}".format(
+                        chrom=row[0], start=row[1] + 1, end=row[2]
+                    ),
+                    file=out,
+                )
+            else:
                 print("Invalid strand in row {}".format(row_id), file=log_file)
 
-        fwd = data_primers[data_primers[5] == "+"]
-        rev = data_primers[data_primers[5] == "-"]
 
-        fwd_out = fwd[[0]].copy()
-        fwd_out["left_start"] = fwd[1] + 1
-        fwd_out["left_end"] = fwd[2]
-        fwd_out["right_start"] = -1
-        fwd_out["right_end"] = -1
-
-        rev_out = rev[[0]].copy()
-        rev_out["left_start"] = -1
-        rev_out["left_end"] = -1
-        rev_out["right_start"] = rev[1] + 1
-        rev_out["right_end"] = rev[2]
-
-        pd.concat([fwd_out, rev_out]).sort_index().to_csv(
-            out, sep="\t", index=False, header=False
-        )
-
-
-def parse_bedpe(log_file, out_path):
-    first_chunk = True
+def parse_bedpe(log_file, out):
     for data_primers in pd.read_csv(
         snakemake.input[0],
         sep="\t",
@@ -49,29 +44,22 @@ def parse_bedpe(log_file, out_path):
         valid_data.iloc[:, [1, 4]] += 1
         valid_data.drop(columns=[3], inplace=True)
         valid_data.dropna(how="all", inplace=True)
-
         valid_data.to_csv(
-            out_path,
+            out,
             sep="\t",
             index=False,
-            header=["chrom", "left_start", "left_end", "right_start", "right_end"]
-            if first_chunk
-            else False,
-            mode="w" if first_chunk else "a",
+            header=["chrom", "left_start", "left_end", "right_start", "right_end"],
         )
-        first_chunk = False
-
         print(
             data_primers[~valid_primers].to_csv(sep="\t", index=False, header=False),
             file=log_file,
-            end="",
         )
 
 
 chunksize = 10**6
-with open(snakemake.log[0], "w") as log_file:
-    if snakemake.input[0].endswith("bedpe"):
-        parse_bedpe(log_file, snakemake.output[0])
-    else:
-        with open(snakemake.output[0], "w") as out:
+with open(snakemake.output[0], "w") as out:
+    with open(snakemake.log[0], "w") as log_file:
+        if snakemake.input[0].endswith("bedpe"):
+            parse_bedpe(log_file, out)
+        else:
             parse_bed(log_file, out)

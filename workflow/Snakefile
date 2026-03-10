@@ -1,18 +1,6 @@
-# Main entrypoint of the read-alignment-pangenome workflow (derived from dna-seq-varlociraptor).
-# Scope: pangenome download → trimming → vg giraffe mapping → postprocessing → CRAM+CRAI.
-# Final outputs:
-#   results/mapped/vg/{sample}.sorted.cram
-#   results/mapped/vg/{sample}.sorted.cram.crai
-# Variant calling (BCF/VCF), annotation, filtering, tables, etc. are intentionally out of scope.
-
 from snakemake.utils import min_version
 
 min_version("9.1.0")
-
-
-# prevent {sample} from swallowing suffixes like ".sorted"
-wildcard_constraints:
-    sample=r"[^\.\/]+",
 
 
 # load configuration
@@ -20,14 +8,22 @@ wildcard_constraints:
 configfile: "config/config.yaml"
 
 
+inputflags:
+    access.sequential,
+
+
+# Allow users to fix the underlying OS via singularity.
+container: "docker://continuumio/miniconda3"
+
+
 # load rules
 # -----------------------------------------------------
 include: "rules/common.smk"
+include: "rules/utils.smk"
 include: "rules/ref.smk"
 include: "rules/trimming.smk"
 include: "rules/mapping.smk"
 include: "rules/primers.smk"
-include: "rules/qc.smk"
 
 
 # optional messages, log and error handling
@@ -44,17 +40,7 @@ onerror:
     print("\n--- An error occurred! ---\n")
 
 
-# targets (CRAM + CRAI mandatory)
-# -----------------------------------------------------
-rule only_alignment:
-    input:
-        expand("results/mapped/vg/{sample}.sorted.cram", sample=list(samples.index)),
-        expand(
-            "results/mapped/vg/{sample}.sorted.cram.crai", sample=list(samples.index)
-        ),
-
-
 rule all:
     input:
-        rules.only_alignment.input,
+        expand("results/recal/{sample}.bam", sample=list(samples.index)),
     default_target: True
