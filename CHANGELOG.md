@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0 (2026-03-10)
+
+
+### Features
+
+* unbundle read alignment from dna-seq-varlociraptor workflow ([#2](https://github.com/snakemake-workflows/read-alignment-pangenome/issues/2)) ([2993d06](https://github.com/snakemake-workflows/read-alignment-pangenome/commit/2993d0676c0dfa0ec61d64ba850f7144daa5f529))
+
 ## [1.2.0](https://github.com/snakemake-workflows/snakemake-workflow-template/compare/v1.1.0...v1.2.0) (2026-01-20)
 
 
