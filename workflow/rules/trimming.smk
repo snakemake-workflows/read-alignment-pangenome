@@ -28,9 +28,9 @@ rule fastp_se:
     input:
         sample=lambda wc: get_fastp_input(wc),
     output:
-        trimmed=temp("results/trimmed/{sample}/{unit}.single.fastq.gz"),
-        html="results/trimmed/{sample}/{unit}.single.qc.html",
-        json="results/trimmed/{sample}/{unit}.single.json",
+        trimmed=temp("<results>/trimmed/{sample}/{unit}.single.fastq.gz"),
+        html="<results>/trimmed/{sample}/{unit}.single.qc.html",
+        json="<results>/trimmed/{sample}/{unit}.single.json",
     log:
         "logs/fastp/se/{sample}_{unit}.log",
     params:
@@ -46,11 +46,11 @@ rule fastp_pe:
         sample=lambda wc: get_fastp_input(wc),
     output:
         trimmed=[
-            temp("results/trimmed/{sample}/{unit}_R1.fastq.gz"),
-            temp("results/trimmed/{sample}/{unit}_R2.fastq.gz"),
+            temp("<results>/trimmed/{sample}/{unit}_R1.fastq.gz"),
+            temp("<results>/trimmed/{sample}/{unit}_R2.fastq.gz"),
         ],
-        html="results/trimmed/{sample}/{unit}.paired.qc.html",
-        json="results/trimmed/{sample}/{unit}.paired.json",
+        html="<results>/trimmed/{sample}/{unit}.paired.qc.html",
+        json="<results>/trimmed/{sample}/{unit}.paired.json",
     log:
         "logs/fastp/pe/{sample}_{unit}.log",
     params:
@@ -65,7 +65,7 @@ rule merge_trimmed_fastqs:
     input:
         get_trimmed_fastqs,
     output:
-        "results/merged/{sample}_{read}.fastq.gz",
+        "<results>/merged/{sample}_{read}.fastq.gz",
     log:
         "logs/merge-fastqs/trimmed/{sample}_{read}.log",
     wildcard_constraints:

@@ -3,8 +3,8 @@ rule assign_primers:
         bam=get_trimming_input,
         primers=get_primer_regions,
     output:
-        assigned=temp("results/primers/{sample}.assigned.bam"),
-        metric="results/primers/{sample}.metric.bam",
+        assigned=temp("<results>/primers/{sample}.assigned.bam"),
+        metric="<results>/primers/{sample}.metric.bam",
     conda:
         "../envs/fgbio.yaml"
     log:
@@ -15,10 +15,10 @@ rule assign_primers:
 
 rule filter_primerless_reads:
     input:
-        "results/primers/{sample}.assigned.bam",
+        "<results>/primers/{sample}.assigned.bam",
     output:
-        primers=temp("results/primers/{sample}.primers.bam"),
-        primerless=temp("results/primers/{sample}.primerless.bam"),
+        primers=temp("<results>/primers/{sample}.primers.bam"),
+        primerless=temp("<results>/primers/{sample}.primerless.bam"),
     conda:
         "../envs/filter_reads.yaml"
     log:
@@ -29,10 +29,10 @@ rule filter_primerless_reads:
 
 rule trim_primers:
     input:
-        bam="results/primers/{sample}.primers.bam",
+        bam="<results>/primers/{sample}.primers.bam",
         primers=get_primer_regions,
     output:
-        trimmed=temp("results/trimmed/{sample}.trimmed.bam"),
+        trimmed=temp("<results>/trimmed/{sample}.trimmed.bam"),
     params:
         sort_order="Coordinate",
         single_primer=get_single_primer_flag,
@@ -49,7 +49,7 @@ rule map_primers:
         reads=lambda wc: get_panel_primer_input(wc.panel),
         idx=access.random(rules.bwa_index.output),
     output:
-        "results/primers/{panel}_primers.bam",
+        "<results>/primers/{panel}_primers.bam",
     log:
         "logs/bwa_mem/{panel}.log",
     params:
@@ -64,9 +64,9 @@ rule map_primers:
 
 rule filter_unmapped_primers:
     input:
-        "results/primers/{panel}_primers.bam",
+        "<results>/primers/{panel}_primers.bam",
     output:
-        "results/primers/{panel}_primers.filtered.bam",
+        "<results>/primers/{panel}_primers.filtered.bam",
     params:
         extra=get_filter_params,
     log:
@@ -77,9 +77,9 @@ rule filter_unmapped_primers:
 
 rule primer_to_bed:
     input:
-        "results/primers/{panel}_primers.filtered.bam",
+        "<results>/primers/{panel}_primers.filtered.bam",
     output:
-        "results/primers/{panel}_primers.{ext}",
+        "<results>/primers/{panel}_primers.{ext}",
     wildcard_constraints:
         ext="bedpe|bed",
     params:
@@ -96,7 +96,7 @@ rule build_primer_regions:
     input:
         get_primer_bed,
     output:
-        "results/primers/{panel}_primer_regions.tsv",
+        "<results>/primers/{panel}_primer_regions.tsv",
     log:
         "logs/primers/build_{panel}_primer_regions.log",
     conda:

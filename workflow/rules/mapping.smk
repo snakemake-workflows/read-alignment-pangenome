@@ -3,7 +3,7 @@ rule map_reads_bwa:
         reads=get_map_reads_input,
         idx=access.random(rules.bwa_index.output),
     output:
-        temp("results/mapped/bwa/{sample}.bam"),
+        temp("<results>/mapped/bwa/{sample}.bam"),
     log:
         "logs/bwa_mem/{sample}.log",
     params:
@@ -17,7 +17,7 @@ rule count_sample_kmers:
     input:
         reads=get_map_reads_input,
     output:
-        "results/kmers/{sample}.kff",
+        "<results>/kmers/{sample}.kff",
     params:
         out_file=lambda wc, output: os.path.splitext(output[0])[0],
         mem=lambda wc, resources: resources.mem[:-2],
@@ -38,7 +38,7 @@ rule count_sample_kmers:
 
 rule create_reference_paths:
     output:
-        "resources/reference_paths.txt",
+        "<resources>/reference_paths.txt",
     params:
         build=config["ref"]["build"],
     log:
@@ -51,11 +51,11 @@ rule map_reads_vg:
     input:
         reads=get_map_reads_input,
         graph=access.random(f"{pangenome_prefix}.gbz"),
-        kmers=access.random("results/kmers/{sample}.kff"),
+        kmers=access.random("<results>/kmers/{sample}.kff"),
         hapl=access.random(f"{pangenome_prefix}.hapl"),
-        paths=access.random("resources/reference_paths.txt"),
+        paths=access.random("<resources>/reference_paths.txt"),
     output:
-        bam=temp("results/mapped/vg/{sample}.raw.bam"),
+        bam=temp("<results>/mapped/vg/{sample}.raw.bam"),
         indexes=temp(
             multiext(
                 f"{pangenome_prefix}.{{sample}}",
@@ -79,9 +79,9 @@ rule map_reads_vg:
 
 rule reheader_mapped_reads:
     input:
-        "results/mapped/vg/{sample}.raw.bam",
+        "<results>/mapped/vg/{sample}.raw.bam",
     output:
-        temp("results/mapped/vg/{sample}.reheadered.bam"),
+        temp("<results>/mapped/vg/{sample}.reheadered.bam"),
     params:
         build=config["ref"]["build"],
     conda:
@@ -96,9 +96,9 @@ rule reheader_mapped_reads:
 
 rule fix_mate:
     input:
-        "results/mapped/vg/{sample}.reheadered.bam",
+        "<results>/mapped/vg/{sample}.reheadered.bam",
     output:
-        temp("results/mapped/vg/{sample}.mate_fixed.bam"),
+        temp("<results>/mapped/vg/{sample}.mate_fixed.bam"),
     log:
         "logs/samtools/fix_mate/{sample}.log",
     threads: 8
@@ -113,13 +113,13 @@ rule fix_mate:
 # for not being able to find read group information
 rule add_read_group:
     input:
-        lambda wc: (
-            "results/mapped/vg/{sample}.mate_fixed.bam"
-            if sample_has_primers(wc)
-            else "results/mapped/vg/{sample}.reheadered.bam"
+        branch(
+            sample_has_primers,
+            then="<results>/mapped/vg/{sample}.mate_fixed.bam",
+            otherwise="<results>/mapped/vg/{sample}.reheadered.bam",
         ),
     output:
-        temp("results/mapped/vg/{sample}.bam"),
+        temp("<results>/mapped/vg/{sample}.bam"),
     log:
         "logs/samtools/add_rg/{sample}.log",
     params:
@@ -134,9 +134,9 @@ rule add_read_group:
 
 rule sort_alignments:
     input:
-        "results/mapped/{aligner}/{sample}.bam",
+        "<results>/mapped/{aligner}/{sample}.bam",
     output:
-        temp("results/mapped/{aligner}/{sample}.sorted.bam"),
+        temp("<results>/mapped/{aligner}/{sample}.sorted.bam"),
     log:
         "logs/sort/{aligner}/{sample}.log",
     threads: 16
@@ -148,10 +148,10 @@ rule sort_alignments:
 
 rule annotate_umis:
     input:
-        bam="results/mapped/{aligner}/{sample}.sorted.bam",
-        idx="results/mapped/{aligner}/{sample}.sorted.bai",
+        bam="<results>/mapped/{aligner}/{sample}.sorted.bam",
+        idx="<results>/mapped/{aligner}/{sample}.sorted.bai",
     output:
-        temp("results/mapped/{aligner}/{sample}.annotated.bam"),
+        temp("<results>/mapped/{aligner}/{sample}.annotated.bam"),
     conda:
         "../envs/umi_tools.yaml"
     log:
@@ -164,8 +164,8 @@ rule mark_duplicates:
     input:
         bams=get_markduplicates_input,
     output:
-        bam=temp("results/dedup/{sample}.bam"),
-        metrics="results/qc/dedup/{sample}.metrics.txt",
+        bam=temp("<results>/dedup/{sample}.bam"),
+        metrics="<results>/qc/dedup/{sample}.metrics.txt",
     log:
         "logs/picard/dedup/{sample}.log",
     params:
@@ -181,10 +181,10 @@ rule calc_consensus_reads:
     input:
         get_consensus_input,
     output:
-        consensus_r1=temp("results/consensus/fastq/{sample}.1.fq"),
-        consensus_r2=temp("results/consensus/fastq/{sample}.2.fq"),
-        consensus_se=temp("results/consensus/fastq/{sample}.se.fq"),
-        skipped=temp("results/consensus/{sample}.skipped.bam"),
+        consensus_r1=temp("<results>/consensus/fastq/{sample}.1.fq"),
+        consensus_r2=temp("<results>/consensus/fastq/{sample}.2.fq"),
+        consensus_se=temp("<results>/consensus/fastq/{sample}.se.fq"),
+        skipped=temp("<results>/consensus/{sample}.skipped.bam"),
     log:
         "logs/consensus/{sample}.log",
     conda:
@@ -198,7 +198,7 @@ rule map_consensus_reads:
         reads=get_processed_consensus_input,
         idx=access.random(rules.bwa_index.output),
     output:
-        temp("results/consensus/{sample}.consensus.{read_type}.mapped.bam"),
+        temp("<results>/consensus/{sample}.consensus.{read_type}.mapped.bam"),
     params:
         index=lambda w, input: os.path.splitext(input.idx[0])[0],
         extra=lambda w: f"-C {get_read_group("-R")(w)}",
@@ -215,11 +215,11 @@ rule map_consensus_reads:
 
 rule merge_consensus_reads:
     input:
-        "results/consensus/{sample}.skipped.bam",
-        "results/consensus/{sample}.consensus.se.mapped.bam",
-        "results/consensus/{sample}.consensus.pe.mapped.bam",
+        "<results>/consensus/{sample}.skipped.bam",
+        "<results>/consensus/{sample}.consensus.se.mapped.bam",
+        "<results>/consensus/{sample}.consensus.pe.mapped.bam",
     output:
-        temp("results/consensus/{sample}.merged.bam"),
+        temp("<results>/consensus/{sample}.merged.bam"),
     log:
         "logs/samtools_merge/{sample}.log",
     threads: 8
@@ -229,9 +229,9 @@ rule merge_consensus_reads:
 
 rule sort_consensus_reads:
     input:
-        "results/consensus/{sample}.merged.bam",
+        "<results>/consensus/{sample}.merged.bam",
     output:
-        temp("results/consensus/{sample}.bam"),
+        temp("<results>/consensus/{sample}.bam"),
     log:
         "logs/samtools_sort/{sample}.log",
     threads: 16
@@ -248,10 +248,10 @@ rule recalibrate_base_qualities:
         ref=genome,
         ref_dict=genome_dict,
         ref_fai=genome_fai,
-        known="resources/variation.noiupac.vcf.gz",
-        tbi="resources/variation.noiupac.vcf.gz.tbi",
+        known="<resources>/variation.noiupac.vcf.gz",
+        tbi="<resources>/variation.noiupac.vcf.gz.tbi",
     output:
-        recal_table=temp("results/recal/{sample}.grp"),
+        recal_table=temp("<results>/recal/{sample}.grp"),
     params:
         extra=config["params"]["gatk"]["BaseRecalibrator"],
         java_opts="",
@@ -274,10 +274,10 @@ rule apply_bqsr:
         ref=genome,
         ref_dict=genome_dict,
         ref_fai=genome_fai,
-        recal_table="results/recal/{sample}.grp",
+        recal_table="<results>/recal/{sample}.grp",
     output:
-        bam=protected("results/recal/{sample}.bam"),
-        bai="results/recal/{sample}.bai",
+        bam=protected("<results>/recal/{sample}.bam"),
+        bai="<results>/recal/{sample}.bai",
     log:
         "logs/gatk/gatk_applybqsr/{sample}.log",
     params:

@@ -1,6 +1,6 @@
 from snakemake.utils import min_version
 
-min_version("9.1.0")
+min_version("9.12.0")
 
 
 # load configuration
@@ -42,5 +42,5 @@ onerror:
 
 rule all:
     input:
-        expand("results/recal/{sample}.bam", sample=list(samples.index)),
+        expand("<results>/recal/{sample}.bam", sample=list(samples.index)),
     default_target: True

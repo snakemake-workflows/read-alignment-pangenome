@@ -29,12 +29,12 @@ species = config["ref"]["species"]
 build = config["ref"]["build"]
 release = config["ref"]["release"]
 genome_name = f"genome.{datatype_genome}.{species}.{build}.{release}"
-genome_prefix = f"resources/{genome_name}"
+genome_prefix = f"<resources>/{genome_name}"
 genome = f"{genome_prefix}.fasta"
 genome_fai = f"{genome}.fai"
 genome_dict = f"{genome_prefix}.dict"
 pangenome_name = f"pangenome.{species}.{build}"
-pangenome_prefix = f"resources/{pangenome_name}"
+pangenome_prefix = f"<resources>/{pangenome_name}"
 
 
 def _group_or_sample(row):
@@ -204,25 +204,25 @@ def is_paired_end(sample):
 def get_map_reads_input(wildcards):
     if is_paired_end(wildcards.sample):
         return [
-            "results/merged/{sample}_R1.fastq.gz",
-            "results/merged/{sample}_R2.fastq.gz",
+            "<results>/merged/{sample}_R1.fastq.gz",
+            "<results>/merged/{sample}_R2.fastq.gz",
         ]
-    return "results/merged/{sample}_single.fastq.gz"
+    return "<results>/merged/{sample}_single.fastq.gz"
 
 
 def get_markduplicates_input(wildcards):
     aligner = get_aligner(wildcards)
     if sample_has_umis(wildcards.sample):
-        return f"results/mapped/{aligner}/{{sample}}.annotated.bam"
+        return f"<results>/mapped/{aligner}/{{sample}}.annotated.bam"
     else:
-        return f"results/mapped/{aligner}/{{sample}}.sorted.bam"
+        return f"<results>/mapped/{aligner}/{{sample}}.sorted.bam"
 
 
 def get_recalibrate_quality_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     # Post-processing of DNA samples
     if is_activated("calc_consensus_reads"):
-        return "results/consensus/{{sample}}.{ext}".format(ext=ext)
+        return "<results>/consensus/{{sample}}.{ext}".format(ext=ext)
     else:
         return get_consensus_input(wildcards, bai)
 
@@ -230,7 +230,7 @@ def get_recalibrate_quality_input(wildcards, bai=False):
 def get_consensus_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     if sample_has_primers(wildcards):
-        return f"results/trimmed/{{sample}}.trimmed.{ext}"
+        return f"<results>/trimmed/{{sample}}.trimmed.{ext}"
     else:
         return get_trimming_input(wildcards, bai)
 
@@ -239,9 +239,9 @@ def get_trimming_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     aligner = get_aligner(wildcards)
     if is_activated("remove_duplicates"):
-        return "results/dedup/{{sample}}.{ext}".format(ext=ext)
+        return "<results>/dedup/{{sample}}.{ext}".format(ext=ext)
     else:
-        return "results/mapped/{aligner}/{{sample}}.sorted.{ext}".format(
+        return "<results>/mapped/{aligner}/{{sample}}.sorted.{ext}".format(
             aligner=aligner, ext=ext
         )
 
@@ -249,14 +249,14 @@ def get_trimming_input(wildcards, bai=False):
 def get_primer_bed(wc):
     if isinstance(primer_panels, pd.DataFrame):
         if not pd.isna(primer_panels.loc[wc.panel, "fa2"]):
-            return "results/primers/{}_primers.bedpe".format(wc.panel)
+            return "<results>/primers/{}_primers.bedpe".format(wc.panel)
         else:
-            return "results/primers/{}_primers.bed".format(wc.panel)
+            return "<results>/primers/{}_primers.bed".format(wc.panel)
     else:
         if config["primers"]["trimming"].get("primers_fa2", ""):
-            return "results/primers/uniform_primers.bedpe"
+            return "<results>/primers/uniform_primers.bedpe"
         else:
-            return "results/primers/uniform_primers.bed"
+            return "<results>/primers/uniform_primers.bed"
 
 
 def extract_unique_sample_column_value(sample, col_name):
@@ -312,8 +312,8 @@ def get_panel_primer_input(panel):
 def get_primer_regions(wc):
     if isinstance(primer_panels, pd.DataFrame):
         panel = extract_unique_sample_column_value(wc.sample, "panel")
-        return f"results/primers/{panel}_primer_regions.tsv"
-    return "results/primers/uniform_primer_regions.tsv"
+        return f"<results>/primers/{panel}_primer_regions.tsv"
+    return "<results>/primers/uniform_primer_regions.tsv"
 
 
 def get_markduplicates_extra(wc):
@@ -334,10 +334,10 @@ def get_markduplicates_extra(wc):
 
 def get_processed_consensus_input(wildcards):
     if wildcards.read_type == "se":
-        return "results/consensus/fastq/{}.se.fq".format(wildcards.sample)
+        return "<results>/consensus/fastq/{}.se.fq".format(wildcards.sample)
     return [
-        "results/consensus/fastq/{}.1.fq".format(wildcards.sample),
-        "results/consensus/fastq/{}.2.fq".format(wildcards.sample),
+        "<results>/consensus/fastq/{}.1.fq".format(wildcards.sample),
+        "<results>/consensus/fastq/{}.2.fq".format(wildcards.sample),
     ]
 
 
@@ -363,7 +363,7 @@ def get_tabix_params(wildcards):
 def get_trimmed_fastqs(wc):
     if units.loc[wc.sample, "adapters"].notna().all():
         return expand(
-            "results/trimmed/{sample}/{unit}_{read}.fastq.gz",
+            "<results>/trimmed/{sample}/{unit}_{read}.fastq.gz",
             unit=units.loc[wc.sample, "unit_name"],
             sample=wc.sample,
             read=wc.read,

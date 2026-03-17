@@ -45,7 +45,7 @@ rule get_known_variants:
         # use fai to annotate contig lengths for GATK BQSR
         fai=genome_fai,
     output:
-        vcf="resources/variation.vcf.gz",
+        vcf="<resources>/variation.vcf.gz",
     log:
         "logs/get-known-variants.log",
     params:
@@ -61,9 +61,9 @@ rule get_known_variants:
 
 rule remove_iupac_codes:
     input:
-        "resources/variation.vcf.gz",
+        "<resources>/variation.vcf.gz",
     output:
-        "resources/variation.noiupac.vcf.gz",
+        "<resources>/variation.noiupac.vcf.gz",
     log:
         "logs/fix-iupac-alleles.log",
     conda:
