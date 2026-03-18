@@ -12,6 +12,7 @@ rule get_sra:
 
 rule fastp_pipe:
     input:
+        # TODO: use get_raw_reads directly
         get_fastp_pipe_input,
     output:
         pipe("pipe/fastp/{sample}/{unit}.{fq}.{ext}"),
@@ -26,6 +27,8 @@ rule fastp_pipe:
 
 rule fastp_se:
     input:
+        # TODO: I think this should just work as:
+        # sample=get_fastp_input
         sample=lambda wc: get_fastp_input(wc),
     output:
         trimmed=temp("<results>/trimmed/{sample}/{unit}.single.fastq.gz"),
@@ -63,6 +66,7 @@ rule fastp_pe:
 
 rule merge_trimmed_fastqs:
     input:
+        # TODO: try turning into a branch() function right here
         get_trimmed_fastqs,
     output:
         "<results>/merged/{sample}_{read}.fastq.gz",

@@ -94,6 +94,8 @@ rule primer_to_bed:
 
 rule build_primer_regions:
     input:
+        # TODO: try to make this a nested branch() input
+        # https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#the-branch-function
         get_primer_bed,
     output:
         "<results>/primers/{panel}_primer_regions.tsv",
