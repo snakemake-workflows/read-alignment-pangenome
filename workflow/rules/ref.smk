@@ -2,13 +2,13 @@ rule get_genome:
     output:
         genome,
     log:
-        "logs/get-genome.log",
+        "<logs>/get-genome.log",
     params:
-        species=config["ref"]["species"],
+        species=lookup(within=config, dpath="ref/species"),
         datatype="dna",
-        build=config["ref"]["build"],
-        release=config["ref"]["release"],
-        chromosome=config["ref"].get("chromosome"),
+        build=lookup(within=config, dpath="ref/build"),
+        release=lookup(within=config, dpath="ref/release"),
+        chromosome=lookup(within=config, dpath="ref/chromosome", default=None),
     cache: "omit-software"
     wrapper:
         "v7.3.0/bio/reference/ensembl-sequence"
@@ -20,7 +20,7 @@ rule genome_faidx:
     output:
         genome_fai,
     log:
-        "logs/genome-faidx.log",
+        "<logs>/genome-faidx.log",
     cache: "omit-software"
     wrapper:
         "v2.3.2/bio/samtools/faidx"
@@ -32,7 +32,7 @@ rule genome_dict:
     output:
         genome_dict,
     log:
-        "logs/samtools/create_dict.log",
+        "<logs>/samtools/create_dict.log",
     conda:
         "../envs/samtools.yaml"
     cache: "omit-software"
@@ -47,13 +47,13 @@ rule get_known_variants:
     output:
         vcf="<resources>/variation.vcf.gz",
     log:
-        "logs/get-known-variants.log",
+        "<logs>/get-known-variants.log",
     params:
-        species=config["ref"]["species"],
-        release=config["ref"]["release"],
-        build=config["ref"]["build"],
+        species=lookup(within=config, dpath="ref/species"),
+        release=lookup(within=config, dpath="ref/release"),
+        build=lookup(within=config, dpath="ref/build"),
         type="all",
-        chromosome=config["ref"].get("chromosome"),
+        chromosome=lookup(within=config, dpath="ref/chromosome", default=None),
     cache: "omit-software"
     wrapper:
         "v7.5.0/bio/reference/ensembl-variation"
@@ -65,7 +65,7 @@ rule remove_iupac_codes:
     output:
         "<resources>/variation.noiupac.vcf.gz",
     log:
-        "logs/fix-iupac-alleles.log",
+        "<logs>/fix-iupac-alleles.log",
     conda:
         "../envs/rbt.yaml"
     cache: "omit-software"
@@ -79,7 +79,7 @@ rule bwa_index:
     output:
         idx=multiext(genome, ".amb", ".ann", ".bwt", ".pac", ".sa"),
     log:
-        "logs/bwa_index.log",
+        "<logs>/bwa_index.log",
     cache: True
     wrapper:
         "v2.3.2/bio/bwa/index"
@@ -93,7 +93,7 @@ rule get_pangenome:
     wildcard_constraints:
         ext="hapl|gbz",
     log:
-        "logs/pangenome/{ext}.log",
+        "<logs>/pangenome/{ext}.log",
     cache: "omit-software"
     shell:
         "curl -o {output} {params.url} 2> {log}"

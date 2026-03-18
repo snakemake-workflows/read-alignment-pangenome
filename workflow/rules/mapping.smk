@@ -5,7 +5,7 @@ rule map_reads_bwa:
     output:
         temp("<results>/mapped/bwa/{sample}.bam"),
     log:
-        "logs/bwa_mem/{sample}.log",
+        "<logs>/bwa_mem/{sample}.log",
     params:
         extra=get_read_group("-R "),
     threads: 8
@@ -26,7 +26,7 @@ rule count_sample_kmers:
     shadow:
         "minimal"
     log:
-        "logs/kmers/{sample}.log",
+        "<logs>/kmers/{sample}.log",
     threads: min(max(workflow.cores, 1), 128)  # kmc can use 128 threads at most
     resources:
         mem="64GB",
@@ -42,9 +42,9 @@ rule create_reference_paths:
     params:
         # TODO: classic lookup, lookup(within=config, dpath="ref/build")
         # https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#the-lookup-function
-        build=config["ref"]["build"],
+        build=lookup(within=config, dpath="ref/build"),
     log:
-        "logs/reference/paths.log",
+        "<logs>/reference/paths.log",
     shell:
         'for chrom in {{1..22}} X Y M; do echo "{params.build}#0#chr$chrom"; done > {output} 2> {log}'
 
@@ -69,10 +69,10 @@ rule map_reads_vg:
         ),
     log:
         # TODO: turn all `logs` into pathvars: `<logs>`
-        "logs/mapped/vg/{sample}.log",
+        "<logs>/mapped/vg/{sample}.log",
     benchmark:
         # TODO: turn all `benchmarks` into pathvars: `<benchmarks>`
-        "benchmarks/vg_giraffe/{sample}.tsv"
+        "<benchmarks>/vg_giraffe/{sample}.tsv"
     params:
         extra=lambda wc, input: f"--ref-paths {input.paths}",
         sorting="none",
@@ -87,11 +87,11 @@ rule reheader_mapped_reads:
     output:
         temp("<results>/mapped/vg/{sample}.reheadered.bam"),
     params:
-        build=config["ref"]["build"],
+        build=lookup(within=config, dpath="ref/build"),
     conda:
         "../envs/samtools.yaml"
     log:
-        "logs/reheader/{sample}.log",
+        "<logs>/reheader/{sample}.log",
     shell:
         "(samtools view {input} -H |"
         " sed -E 's/(SN:{params.build}#0#chr)/SN:/; s/SN:M/SN:MT/' | "
@@ -104,7 +104,7 @@ rule fix_mate:
     output:
         temp("<results>/mapped/vg/{sample}.mate_fixed.bam"),
     log:
-        "logs/samtools/fix_mate/{sample}.log",
+        "<logs>/samtools/fix_mate/{sample}.log",
     threads: 8
     params:
         extra="",
@@ -125,7 +125,7 @@ rule add_read_group:
     output:
         temp("<results>/mapped/vg/{sample}.bam"),
     log:
-        "logs/samtools/add_rg/{sample}.log",
+        "<logs>/samtools/add_rg/{sample}.log",
     params:
         read_group=get_read_group(""),
     conda:
@@ -142,7 +142,7 @@ rule sort_alignments:
     output:
         temp("<results>/mapped/{aligner}/{sample}.sorted.bam"),
     log:
-        "logs/sort/{aligner}/{sample}.log",
+        "<logs>/sort/{aligner}/{sample}.log",
     threads: 16
     resources:
         mem_mb=32000,
@@ -159,7 +159,7 @@ rule annotate_umis:
     conda:
         "../envs/umi_tools.yaml"
     log:
-        "logs/annotate_bam/{aligner}/{sample}.log",
+        "<logs>/annotate_bam/{aligner}/{sample}.log",
     shell:
         "umi_tools group -I {input.bam} --paired --umi-separator : --output-bam -S {output} &> {log}"
 
@@ -168,12 +168,16 @@ rule mark_duplicates:
     input:
         # TODO: try turning into a branch() input function right here
         # note: not sure if calling functions under `then:`/`otherwise:` works
-        bams=get_markduplicates_input,
+        bams=branch(
+            lambda wc: sample_has_umis(wc.sample),
+            then=lambda wc: f"<results>/mapped/{get_aligner(wc)}/{{sample}}.annotated.bam",
+            otherwise=lambda wc: f"<results>/mapped/{get_aligner(wc)}/{{sample}}.sorted.bam",
+        ),
     output:
         bam=temp("<results>/dedup/{sample}.bam"),
         metrics="<results>/qc/dedup/{sample}.metrics.txt",
     log:
-        "logs/picard/dedup/{sample}.log",
+        "<logs>/picard/dedup/{sample}.log",
     params:
         extra=get_markduplicates_extra,
     resources:
@@ -192,7 +196,7 @@ rule calc_consensus_reads:
         consensus_se=temp("<results>/consensus/fastq/{sample}.se.fq"),
         skipped=temp("<results>/consensus/{sample}.skipped.bam"),
     log:
-        "logs/consensus/{sample}.log",
+        "<logs>/consensus/{sample}.log",
     conda:
         "../envs/rbt.yaml"
     shell:
@@ -202,19 +206,26 @@ rule calc_consensus_reads:
 rule map_consensus_reads:
     input:
         # TODO: try turning this into a branch() input function right here
-        reads=get_processed_consensus_input,
+        reads=branch(
+            lambda wc: wc.read_type == "se",
+            then="<results>/consensus/fastq/{sample}.se.fq",
+            otherwise=[
+                "<results>/consensus/fastq/{sample}.1.fq",
+                "<results>/consensus/fastq/{sample}.2.fq",
+            ],
+        ),
         idx=access.random(rules.bwa_index.output),
     output:
         temp("<results>/consensus/{sample}.consensus.{read_type}.mapped.bam"),
     params:
-        index=lambda w, input: os.path.splitext(input.idx[0])[0],
-        extra=lambda w: f"-C {get_read_group("-R")(w)}",
+        index=lambda wc, input: os.path.splitext(input.idx[0])[0],
+        extra=lambda wc: f"-C {get_read_group("-R")(wc)}",
         sort="samtools",
         sort_order="coordinate",
     wildcard_constraints:
         read_type="pe|se",
     log:
-        "logs/bwa_mem/{sample}.{read_type}.consensus.log",
+        "<logs>/bwa_mem/{sample}.{read_type}.consensus.log",
     threads: 8
     wrapper:
         "v2.3.2/bio/bwa/mem"
@@ -228,7 +239,7 @@ rule merge_consensus_reads:
     output:
         temp("<results>/consensus/{sample}.merged.bam"),
     log:
-        "logs/samtools_merge/{sample}.log",
+        "<logs>/samtools_merge/{sample}.log",
     threads: 8
     wrapper:
         "v2.3.2/bio/samtools/merge"
@@ -240,7 +251,7 @@ rule sort_consensus_reads:
     output:
         temp("<results>/consensus/{sample}.bam"),
     log:
-        "logs/samtools_sort/{sample}.log",
+        "<logs>/samtools_sort/{sample}.log",
     threads: 16
     resources:
         mem_mb=64000,
@@ -251,7 +262,7 @@ rule sort_consensus_reads:
 rule recalibrate_base_qualities:
     input:
         bam=get_recalibrate_quality_input,
-        bai=lambda w: get_recalibrate_quality_input(w, bai=True),
+        bai=lambda wc: get_recalibrate_quality_input(wc, bai=True),
         ref=genome,
         ref_dict=genome_dict,
         ref_fai=genome_fai,
@@ -260,12 +271,12 @@ rule recalibrate_base_qualities:
     output:
         recal_table=temp("<results>/recal/{sample}.grp"),
     params:
-        extra=config["params"]["gatk"]["BaseRecalibrator"],
+        extra=lookup(within=config, dpath="params/gatk/BaseRecalibrator"),
         java_opts="",
     resources:
         mem_mb=1024,
     log:
-        "logs/gatk/baserecalibrator/{sample}.log",
+        "<logs>/gatk/baserecalibrator/{sample}.log",
     threads: 8
     wrapper:
         "v1.25.0/bio/gatk/baserecalibratorspark"
@@ -277,7 +288,7 @@ ruleorder: apply_bqsr > bam_index
 rule apply_bqsr:
     input:
         bam=get_recalibrate_quality_input,
-        bai=lambda w: get_recalibrate_quality_input(w, bai=True),
+        bai=lambda wc: get_recalibrate_quality_input(wc, bai=True),
         ref=genome,
         ref_dict=genome_dict,
         ref_fai=genome_fai,
@@ -286,9 +297,9 @@ rule apply_bqsr:
         bam=protected("<results>/recal/{sample}.bam"),
         bai="<results>/recal/{sample}.bai",
     log:
-        "logs/gatk/gatk_applybqsr/{sample}.log",
+        "<logs>/gatk/gatk_applybqsr/{sample}.log",
     params:
-        extra=config["params"]["gatk"]["applyBQSR"],  # optional
+        extra=lookup(within=config, dpath="params/gatk/applyBQSR"),  # optional
         java_opts="",  # optional
     wrapper:
         "v2.3.2/bio/gatk/applybqsr"

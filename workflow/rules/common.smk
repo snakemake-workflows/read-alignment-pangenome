@@ -246,12 +246,12 @@ def get_trimming_input(wildcards, bai=False):
         )
 
 
-def get_primer_bed(wc):
+def get_primer_bed(wildcards):
     if isinstance(primer_panels, pd.DataFrame):
-        if not pd.isna(primer_panels.loc[wc.panel, "fa2"]):
-            return "<results>/primers/{}_primers.bedpe".format(wc.panel)
+        if not pd.isna(primer_panels.loc[wildcards.panel, "fa2"]):
+            return "<results>/primers/{}_primers.bedpe".format(wildcards.panel)
         else:
-            return "<results>/primers/{}_primers.bed".format(wc.panel)
+            return "<results>/primers/{}_primers.bed".format(wildcards.panel)
     else:
         if config["primers"]["trimming"].get("primers_fa2", ""):
             return "<results>/primers/uniform_primers.bedpe"
@@ -309,17 +309,17 @@ def get_panel_primer_input(panel):
         return panel["fa1"]
 
 
-def get_primer_regions(wc):
+def get_primer_regions(wildcards):
     if isinstance(primer_panels, pd.DataFrame):
-        panel = extract_unique_sample_column_value(wc.sample, "panel")
+        panel = extract_unique_sample_column_value(wildcards.sample, "panel")
         return f"<results>/primers/{panel}_primer_regions.tsv"
     return "<results>/primers/uniform_primer_regions.tsv"
 
 
-def get_markduplicates_extra(wc):
+def get_markduplicates_extra(wildcards):
     c = config["params"]["picard"]["MarkDuplicates"]
 
-    if sample_has_umis(wc.sample):
+    if sample_has_umis(wildcards.sample):
         b = "--BARCODE_TAG BX"
     else:
         b = ""
@@ -360,20 +360,20 @@ def get_tabix_params(wildcards):
     raise ValueError("Invalid format for tabix: {}".format(wildcards.format))
 
 
-def get_trimmed_fastqs(wc):
-    if units.loc[wc.sample, "adapters"].notna().all():
+def get_trimmed_fastqs(wildcards):
+    if units.loc[wildcards.sample, "adapters"].notna().all():
         return expand(
             "<results>/trimmed/{sample}/{unit}_{read}.fastq.gz",
-            unit=units.loc[wc.sample, "unit_name"],
-            sample=wc.sample,
-            read=wc.read,
+            unit=units.loc[wildcards.sample, "unit_name"],
+            sample=wildcards.sample,
+            read=wildcards.read,
         )
     else:
-        fq = "fq1" if wc.read == "R1" or wc.read == "single" else "fq2"
+        fq = "fq1" if wildcards.read == "R1" or wildcards.read == "single" else "fq2"
         return [
             read
-            for unit in units.loc[wc.sample, "unit_name"]
-            for read in get_raw_reads(wc.sample, unit, fq)
+            for unit in units.loc[wildcards.sample, "unit_name"]
+            for read in get_raw_reads(wildcards.sample, unit, fq)
         ]
 
 
@@ -406,14 +406,14 @@ def get_annotate_umis_params(wildcards):
     )
 
 
-def get_filter_params(wc):
-    if isinstance(get_panel_primer_input(wc.panel), list):
+def get_filter_params(wildcards):
+    if isinstance(get_panel_primer_input(wildcards.panel), list):
         return "-b -F 12"
     return "-b -F 4"
 
 
-def get_single_primer_flag(wc):
-    if not isinstance(get_sample_primer_fastas(wc.sample), list):
+def get_single_primer_flag(wildcards):
+    if not isinstance(get_sample_primer_fastas(wildcards.sample), list):
         return "--first-of-pair"
     return ""
 
@@ -431,8 +431,8 @@ def get_shortest_primer_length(primers):
     return min_length
 
 
-def get_primer_extra(wc, input):
-    extra = rf"-R '@RG\tID:{wc.panel}\tSM:{wc.panel}' -L 100"
+def get_primer_extra(wildcards, input):
+    extra = rf"-R '@RG\tID:{wildcards.panel}\tSM:{wildcards.panel}' -L 100"
     min_primer_len = get_shortest_primer_length(input.reads)
     # Check if shortest primer is below default values
     if min_primer_len < 32:

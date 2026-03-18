@@ -5,7 +5,7 @@ rule get_sra:
     params:
         extra=lookup(within=config, dpath="params/get_sra/extra", default=""),
     log:
-        "logs/get-sra/{accession}.log",
+        "<logs>/get-sra/{accession}.log",
     wrapper:
         "v7.6.0/bio/sra-tools/fasterq-dump"
 
@@ -13,11 +13,11 @@ rule get_sra:
 rule fastp_pipe:
     input:
         # TODO: use get_raw_reads directly
-        get_fastp_pipe_input,
+        get_raw_reads,
     output:
         pipe("pipe/fastp/{sample}/{unit}.{fq}.{ext}"),
     log:
-        "logs/pipe-fastqs/fastp/{sample}-{unit}.{fq}.{ext}.log",
+        "<logs>/pipe-fastqs/fastp/{sample}-{unit}.{fq}.{ext}.log",
     wildcard_constraints:
         ext=r"fastq|fastq\.gz",
     threads: 0  # this does not need CPU
@@ -29,13 +29,13 @@ rule fastp_se:
     input:
         # TODO: I think this should just work as:
         # sample=get_fastp_input
-        sample=lambda wc: get_fastp_input(wc),
+        sample=get_fastp_input,
     output:
         trimmed=temp("<results>/trimmed/{sample}/{unit}.single.fastq.gz"),
         html="<results>/trimmed/{sample}/{unit}.single.qc.html",
         json="<results>/trimmed/{sample}/{unit}.single.json",
     log:
-        "logs/fastp/se/{sample}_{unit}.log",
+        "<logs>/fastp/se/{sample}_{unit}.log",
     params:
         adapters=get_fastp_adapters,
         extra=get_fastp_extra,
@@ -46,7 +46,7 @@ rule fastp_se:
 
 rule fastp_pe:
     input:
-        sample=lambda wc: get_fastp_input(wc),
+        sample=get_fastp_input,
     output:
         trimmed=[
             temp("<results>/trimmed/{sample}/{unit}_R1.fastq.gz"),
@@ -55,7 +55,7 @@ rule fastp_pe:
         html="<results>/trimmed/{sample}/{unit}.paired.qc.html",
         json="<results>/trimmed/{sample}/{unit}.paired.json",
     log:
-        "logs/fastp/pe/{sample}_{unit}.log",
+        "<logs>/fastp/pe/{sample}_{unit}.log",
     params:
         adapters=get_fastp_adapters,
         extra=get_fastp_extra,
@@ -67,11 +67,28 @@ rule fastp_pe:
 rule merge_trimmed_fastqs:
     input:
         # TODO: try turning into a branch() function right here
-        get_trimmed_fastqs,
+        branch(
+            lambda wc: units.loc[wc.sample, "adapters"].notna().all(),
+            then=lambda wc: expand(
+                "<results>/trimmed/{sample}/{unit}_{read}.fastq.gz",
+                unit=units.loc[wc.sample, "unit_name"],
+                sample=wc.sample,
+                read=wc.read,
+            ),
+            otherwise=lambda wc: [
+                read
+                for unit in units.loc[wc.sample, "unit_name"]
+                for read in get_raw_reads(
+                    wc.sample,
+                    unit,
+                    "fq1" if wc.read in {"R1", "single"} else "fq2",
+                )
+            ],
+        ),
     output:
         "<results>/merged/{sample}_{read}.fastq.gz",
     log:
-        "logs/merge-fastqs/trimmed/{sample}_{read}.log",
+        "<logs>/merge-fastqs/trimmed/{sample}_{read}.log",
     wildcard_constraints:
         read="single|R1|R2",
     shell:

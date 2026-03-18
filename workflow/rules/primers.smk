@@ -8,7 +8,7 @@ rule assign_primers:
     conda:
         "../envs/fgbio.yaml"
     log:
-        "logs/primers/assignment/{sample}.log",
+        "<logs>/primers/assignment/{sample}.log",
     shell:
         "fgbio AssignPrimers -i {input.bam} -p {input.primers} -m {output.metric} -o {output.assigned} &> {log}"
 
@@ -22,7 +22,7 @@ rule filter_primerless_reads:
     conda:
         "../envs/filter_reads.yaml"
     log:
-        "logs/primers/filter/{sample}.log",
+        "<logs>/primers/filter/{sample}.log",
     script:
         "../scripts/filter_primers.rs"
 
@@ -39,7 +39,7 @@ rule trim_primers:
     conda:
         "../envs/fgbio.yaml"
     log:
-        "logs/trimming/{sample}.log",
+        "<logs>/trimming/{sample}.log",
     shell:
         "fgbio TrimPrimers -H -i {input.bam} -p {input.primers} -s {params.sort_order} {params.single_primer} -o {output.trimmed} &> {log}"
 
@@ -51,9 +51,9 @@ rule map_primers:
     output:
         "<results>/primers/{panel}_primers.bam",
     log:
-        "logs/bwa_mem/{panel}.log",
+        "<logs>/bwa_mem/{panel}.log",
     params:
-        extra=lambda wc, input: get_primer_extra(wc, input),
+        extra=get_primer_extra,
         sorting="none",  # Can be 'none', 'samtools' or 'picard'.
         sort_order="queryname",  # Can be 'queryname' or 'coordinate'.
         sort_extra="",  # Extra args for samtools/picard.
@@ -70,7 +70,7 @@ rule filter_unmapped_primers:
     params:
         extra=get_filter_params,
     log:
-        "logs/primers/{panel}_primers_filtered.log",
+        "<logs>/primers/{panel}_primers_filtered.log",
     wrapper:
         "v2.3.2/bio/samtools/view"
 
@@ -85,7 +85,7 @@ rule primer_to_bed:
     params:
         format=lambda wc: "-bedpe" if wc.ext == "bedpe" else "",
     log:
-        "logs/primers/{panel}_primers_{ext}.log",
+        "<logs>/primers/{panel}_primers_{ext}.log",
     conda:
         "../envs/bedtools.yaml"
     shell:
@@ -96,11 +96,23 @@ rule build_primer_regions:
     input:
         # TODO: try to make this a nested branch() input
         # https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#the-branch-function
-        get_primer_bed,
+        get_primer_bed=branch(
+            isinstance(primer_panels, pd.DataFrame),
+            then=branch(
+                lambda wc: not pd.isna(primer_panels.loc[wc.panel, "fa2"]),
+                then="<results>/primers/{panel}_primers.bedpe",
+                otherwise="<results>/primers/{panel}_primers.bed",
+            ),
+            otherwise=branch(
+                bool(config["primers"]["trimming"].get("primers_fa2", "")),
+                then="<results>/primers/uniform_primers.bedpe",
+                otherwise="<results>/primers/uniform_primers.bed",
+            ),
+        ),
     output:
         "<results>/primers/{panel}_primer_regions.tsv",
     log:
-        "logs/primers/build_{panel}_primer_regions.log",
+        "<logs>/primers/build_{panel}_primer_regions.log",
     conda:
         "../envs/pandas.yaml"
     script:
