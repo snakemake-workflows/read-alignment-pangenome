@@ -169,7 +169,7 @@ rule mark_duplicates:
         # TODO: try turning into a branch() input function right here
         # note: not sure if calling functions under `then:`/`otherwise:` works
         bams=branch(
-            lambda wc: sample_has_umis(wc.sample),
+            sample_has_umis,
             then=lambda wc: f"<results>/mapped/{get_aligner(wc)}/{{sample}}.annotated.bam",
             otherwise=lambda wc: f"<results>/mapped/{get_aligner(wc)}/{{sample}}.sorted.bam",
         ),
@@ -207,7 +207,7 @@ rule map_consensus_reads:
     input:
         # TODO: try turning this into a branch() input function right here
         reads=branch(
-            lambda wc: wc.read_type == "se",
+            evaluate("{read_type} == 'se'"),
             then="<results>/consensus/fastq/{sample}.se.fq",
             otherwise=[
                 "<results>/consensus/fastq/{sample}.1.fq",
@@ -219,7 +219,7 @@ rule map_consensus_reads:
         temp("<results>/consensus/{sample}.consensus.{read_type}.mapped.bam"),
     params:
         index=lambda wc, input: os.path.splitext(input.idx[0])[0],
-        extra=lambda wc: f"-C {get_read_group("-R")(wc)}",
+        extra=lambda wc: f"-C {get_read_group('-R')(wc)}",
         sort="samtools",
         sort_order="coordinate",
     wildcard_constraints:

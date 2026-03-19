@@ -21,7 +21,7 @@ rule tabix_known_variants:
         # using the cases= entry
         # note: not sure whether the `otherwise=` will work with the `cases=`
         extra=branch(
-            lambda wc: wc.format,
+            evaluate("{format}"),
             cases={
                 "vcf": "-p vcf",
                 "txt": "-s 1 -b 2 -e 2",

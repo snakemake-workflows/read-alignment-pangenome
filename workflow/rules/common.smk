@@ -181,7 +181,7 @@ def get_fastp_adapters(wildcards):
 
 def get_fastp_extra(wildcards):
     extra = config["params"]["fastp"]
-    if sample_has_umis(wildcards.sample):
+    if sample_has_umis(wildcards):
         extra += get_annotate_umis_params(wildcards)
     return extra
 
@@ -212,7 +212,7 @@ def get_map_reads_input(wildcards):
 
 def get_markduplicates_input(wildcards):
     aligner = get_aligner(wildcards)
-    if sample_has_umis(wildcards.sample):
+    if sample_has_umis(wildcards):
         return f"<results>/mapped/{aligner}/{{sample}}.annotated.bam"
     else:
         return f"<results>/mapped/{aligner}/{{sample}}.sorted.bam"
@@ -319,7 +319,7 @@ def get_primer_regions(wildcards):
 def get_markduplicates_extra(wildcards):
     c = config["params"]["picard"]["MarkDuplicates"]
 
-    if sample_has_umis(wildcards.sample):
+    if sample_has_umis(wildcards):
         b = "--BARCODE_TAG BX"
     else:
         b = ""
@@ -392,8 +392,8 @@ def sample_has_primers(wildcards):
     return False
 
 
-def sample_has_umis(sample):
-    return pd.notna(extract_unique_sample_column_value(sample, "umi_read"))
+def sample_has_umis(wildcards):
+    return pd.notna(extract_unique_sample_column_value(wildcards.sample, "umi_read"))
 
 
 def get_annotate_umis_params(wildcards):

@@ -13,7 +13,7 @@ rule get_sra:
 rule fastp_pipe:
     input:
         # TODO: use get_raw_reads directly
-        get_raw_reads,
+        lambda wc: get_raw_reads(wc.sample, wc.unit, wc.fq),
     output:
         pipe("pipe/fastp/{sample}/{unit}.{fq}.{ext}"),
     log:
