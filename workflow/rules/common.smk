@@ -210,14 +210,6 @@ def get_map_reads_input(wildcards):
     return "<results>/merged/{sample}_single.fastq.gz"
 
 
-def get_markduplicates_input(wildcards):
-    aligner = get_aligner(wildcards)
-    if sample_has_umis(wildcards):
-        return f"<results>/mapped/{aligner}/{{sample}}.annotated.bam"
-    else:
-        return f"<results>/mapped/{aligner}/{{sample}}.sorted.bam"
-
-
 def get_recalibrate_quality_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     # Post-processing of DNA samples
@@ -244,19 +236,6 @@ def get_trimming_input(wildcards, bai=False):
         return "<results>/mapped/{aligner}/{{sample}}.sorted.{ext}".format(
             aligner=aligner, ext=ext
         )
-
-
-def get_primer_bed(wildcards):
-    if isinstance(primer_panels, pd.DataFrame):
-        if not pd.isna(primer_panels.loc[wildcards.panel, "fa2"]):
-            return "<results>/primers/{}_primers.bedpe".format(wildcards.panel)
-        else:
-            return "<results>/primers/{}_primers.bed".format(wildcards.panel)
-    else:
-        if config["primers"]["trimming"].get("primers_fa2", ""):
-            return "<results>/primers/uniform_primers.bedpe"
-        else:
-            return "<results>/primers/uniform_primers.bed"
 
 
 def extract_unique_sample_column_value(sample, col_name):
@@ -332,15 +311,6 @@ def get_markduplicates_extra(wildcards):
     return f"{c} {b} {d}"
 
 
-def get_processed_consensus_input(wildcards):
-    if wildcards.read_type == "se":
-        return "<results>/consensus/fastq/{}.se.fq".format(wildcards.sample)
-    return [
-        "<results>/consensus/fastq/{}.1.fq".format(wildcards.sample),
-        "<results>/consensus/fastq/{}.2.fq".format(wildcards.sample),
-    ]
-
-
 def get_read_group(prefix: str):
     def inner(wildcards):
         """Denote sample name and platform in read group."""
@@ -350,31 +320,6 @@ def get_read_group(prefix: str):
         )
 
     return inner
-
-
-def get_tabix_params(wildcards):
-    if wildcards.format == "vcf":
-        return "-p vcf"
-    if wildcards.format == "txt":
-        return "-s 1 -b 2 -e 2"
-    raise ValueError("Invalid format for tabix: {}".format(wildcards.format))
-
-
-def get_trimmed_fastqs(wildcards):
-    if units.loc[wildcards.sample, "adapters"].notna().all():
-        return expand(
-            "<results>/trimmed/{sample}/{unit}_{read}.fastq.gz",
-            unit=units.loc[wildcards.sample, "unit_name"],
-            sample=wildcards.sample,
-            read=wildcards.read,
-        )
-    else:
-        fq = "fq1" if wildcards.read == "R1" or wildcards.read == "single" else "fq2"
-        return [
-            read
-            for unit in units.loc[wildcards.sample, "unit_name"]
-            for read in get_raw_reads(wildcards.sample, unit, fq)
-        ]
 
 
 def sample_has_primers(wildcards):

@@ -17,9 +17,6 @@ rule tabix_known_variants:
     log:
         "<logs>/tabix/{prefix}.{format}.log",
     params:
-        # TODO: turn this into a branch() function right here,
-        # using the cases= entry
-        # note: not sure whether the `otherwise=` will work with the `cases=`
         extra=branch(
             evaluate("{format}"),
             cases={

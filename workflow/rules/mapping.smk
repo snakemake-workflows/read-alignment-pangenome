@@ -40,8 +40,6 @@ rule create_reference_paths:
     output:
         "<resources>/reference_paths.txt",
     params:
-        # TODO: classic lookup, lookup(within=config, dpath="ref/build")
-        # https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#the-lookup-function
         build=lookup(within=config, dpath="ref/build"),
     log:
         "<logs>/reference/paths.log",
@@ -68,10 +66,8 @@ rule map_reads_vg:
             )
         ),
     log:
-        # TODO: turn all `logs` into pathvars: `<logs>`
         "<logs>/mapped/vg/{sample}.log",
     benchmark:
-        # TODO: turn all `benchmarks` into pathvars: `<benchmarks>`
         "<benchmarks>/vg_giraffe/{sample}.tsv"
     params:
         extra=lambda wc, input: f"--ref-paths {input.paths}",
@@ -166,8 +162,6 @@ rule annotate_umis:
 
 rule mark_duplicates:
     input:
-        # TODO: try turning into a branch() input function right here
-        # note: not sure if calling functions under `then:`/`otherwise:` works
         bams=branch(
             sample_has_umis,
             then=lambda wc: f"<results>/mapped/{get_aligner(wc)}/{{sample}}.annotated.bam",
@@ -205,7 +199,6 @@ rule calc_consensus_reads:
 
 rule map_consensus_reads:
     input:
-        # TODO: try turning this into a branch() input function right here
         reads=branch(
             evaluate("{read_type} == 'se'"),
             then="<results>/consensus/fastq/{sample}.se.fq",

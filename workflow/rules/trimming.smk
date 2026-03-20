@@ -12,8 +12,7 @@ rule get_sra:
 
 rule fastp_pipe:
     input:
-        # TODO: use get_raw_reads directly
-        lambda wc: get_raw_reads(wc.sample, wc.unit, wc.fq),
+        get_fastp_pipe_input,
     output:
         pipe("pipe/fastp/{sample}/{unit}.{fq}.{ext}"),
     log:
@@ -27,8 +26,6 @@ rule fastp_pipe:
 
 rule fastp_se:
     input:
-        # TODO: I think this should just work as:
-        # sample=get_fastp_input
         sample=get_fastp_input,
     output:
         trimmed=temp("<results>/trimmed/{sample}/{unit}.single.fastq.gz"),
@@ -66,16 +63,9 @@ rule fastp_pe:
 
 rule merge_trimmed_fastqs:
     input:
-        # TODO: try turning into a branch() function right here
         branch(
-            lambda wc: units.loc[wc.sample, "adapters"].notna().all(),
-            then=lambda wc: expand(
-                "<results>/trimmed/{sample}/{unit}_{read}.fastq.gz",
-                unit=units.loc[wc.sample, "unit_name"],
-                sample=wc.sample,
-                read=wc.read,
-            ),
-            otherwise=lambda wc: [
+            lambda wc: units.loc[wc.sample, "adapters"].isna().all(),
+            then=lambda wc: [
                 read
                 for unit in units.loc[wc.sample, "unit_name"]
                 for read in get_raw_reads(
@@ -84,6 +74,24 @@ rule merge_trimmed_fastqs:
                     "fq1" if wc.read in {"R1", "single"} else "fq2",
                 )
             ],
+            otherwise=branch(
+                lambda wc: units.loc[wc.sample, "adapters"].notna().all(),
+                then=lambda wc: expand(
+                    (
+                        "<results>/trimmed/{sample}/{unit}.single.fastq.gz"
+                        if wc.read == "single"
+                        else "<results>/trimmed/{sample}/{unit}_{read}.fastq.gz"
+                    ),
+                    unit=units.loc[wc.sample, "unit_name"],
+                    sample=wc.sample,
+                    read=wc.read,
+                ),
+                otherwise=lambda wc: (_ for _ in ()).throw(
+                    RuntimeError(
+                        f"Sample '{wc.sample}' has units with and without adapters specified."
+                    )
+                ),
+            ),
         ),
     output:
         "<results>/merged/{sample}_{read}.fastq.gz",

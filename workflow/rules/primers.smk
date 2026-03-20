@@ -94,8 +94,6 @@ rule primer_to_bed:
 
 rule build_primer_regions:
     input:
-        # TODO: try to make this a nested branch() input
-        # https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#the-branch-function
         branch(
             isinstance(primer_panels, pd.DataFrame),
             then=branch(
