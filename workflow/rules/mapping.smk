@@ -50,21 +50,11 @@ rule create_reference_paths:
 rule map_reads_vg:
     input:
         reads=get_map_reads_input,
-        graph=access.random(f"{pangenome_prefix}.gbz"),
-        kmers=access.random("results/kmers/{sample}.kff"),
-        hapl=access.random(f"{pangenome_prefix}.hapl"),
-        paths=access.random("resources/reference_paths.txt"),
+        graph=access.random(f"{pangenome_prefix}.giraffe.gbz"),
+        kmers=access.random("<results>/kmers/{sample}.kff"),
+        paths=access.random("<resources>/reference_paths.txt"),
     output:
-        bam=temp("results/mapped/vg/{sample}.raw.bam"),
-        indexes=temp(
-            multiext(
-                f"{pangenome_prefix}.{{sample}}",
-                ".gbz",
-                ".dist",
-                ".shortread.withzip.min",
-                ".shortread.zipcodes",
-            )
-        ),
+        bam=temp("<results>/mapped/vg/{sample}.raw.bam"),
     log:
         "logs/mapped/vg/{sample}.log",
     benchmark:

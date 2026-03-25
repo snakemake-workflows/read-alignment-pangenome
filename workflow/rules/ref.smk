@@ -85,15 +85,34 @@ rule bwa_index:
         "v2.3.2/bio/bwa/index"
 
 
-rule get_pangenome:
+rule get_pangenome_vcf:
     output:
-        f"{pangenome_prefix}.{{ext}}",
+        f"{pangenome_prefix}.wave.vcf.gz",
     params:
-        url=lambda wc: get_pangenome_url(wc.ext),
-    wildcard_constraints:
-        ext="hapl|gbz",
+        url=get_pangenome_url,
     log:
-        "logs/pangenome/{ext}.log",
+        "<logs>/pangenome/vcf.log",
     cache: "omit-software"
     shell:
-        "curl -o {output} {params.url} 2> {log}"
+        "curl -L {params.url} -o {output} 2> {log}"
+
+
+rule vg_autoindex_giraffe:
+    input:
+        ref=genome,
+        vcf=f"{pangenome_prefix}.wave.vcf.gz",
+    output:
+        multiext(
+            pangenome_prefix,
+            ".dist",
+            ".shortread.zipcodes",
+            ".shortread.withzip.min",
+            ".giraffe.gbz",
+        ),
+    log:
+        "<logs>/pangenome/autoindex.log",
+    params:
+        extra="",
+    threads: 8
+    wrapper:
+        "v8.0.3/bio/vg/autoindex"
