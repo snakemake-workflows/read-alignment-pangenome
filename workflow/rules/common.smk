@@ -88,11 +88,11 @@ def is_activated(xpath):
     return bool(c.get("activate", False))
 
 
-def get_aligner(wildcards):
-    if is_activated("ref/pangenome"):
-        return "vg"
-    else:
-        return "bwa"
+get_aligner = branch(
+    is_activated("ref/pangenome"),
+    then="vg",
+    otherwise="bwa",
+)
 
 
 def get_fastp_input(wildcards):
@@ -179,13 +179,6 @@ def get_fastp_adapters(wildcards):
         return ""
 
 
-def get_fastp_extra(wildcards):
-    extra = config["params"]["fastp"]
-    if sample_has_umis(wildcards):
-        extra += get_annotate_umis_params(wildcards)
-    return extra
-
-
 def is_paired_end(sample):
     sample_units = units.loc[sample]
     fq2_null = sample_units["fq2"].isnull()
@@ -201,13 +194,14 @@ def is_paired_end(sample):
     return all_paired
 
 
-def get_map_reads_input(wildcards):
-    if is_paired_end(wildcards.sample):
-        return [
-            "<results>/merged/{sample}_R1.fastq.gz",
-            "<results>/merged/{sample}_R2.fastq.gz",
-        ]
-    return "<results>/merged/{sample}_single.fastq.gz"
+get_map_reads_input = branch(
+    lambda wc: is_paired_end(wc.sample),
+    then=[
+        "<results>/merged/{sample}_R1.fastq.gz",
+        "<results>/merged/{sample}_R2.fastq.gz",
+    ],
+    otherwise="<results>/merged/{sample}_single.fastq.gz",
+)
 
 
 def get_recalibrate_quality_input(wildcards, bai=False):
@@ -229,12 +223,11 @@ def get_consensus_input(wildcards, bai=False):
 
 def get_trimming_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
-    aligner = get_aligner(wildcards)
     if is_activated("remove_duplicates"):
         return "<results>/dedup/{{sample}}.{ext}".format(ext=ext)
     else:
         return "<results>/mapped/{aligner}/{{sample}}.sorted.{ext}".format(
-            aligner=aligner, ext=ext
+            aligner=get_aligner, ext=ext
         )
 
 
@@ -288,11 +281,11 @@ def get_panel_primer_input(panel):
         return panel["fa1"]
 
 
-def get_primer_regions(wildcards):
-    if isinstance(primer_panels, pd.DataFrame):
-        panel = extract_unique_sample_column_value(wildcards.sample, "panel")
-        return f"<results>/primers/{panel}_primer_regions.tsv"
-    return "<results>/primers/uniform_primer_regions.tsv"
+get_primer_regions = branch(
+    isinstance(primer_panels, pd.DataFrame),
+    then=lambda wc: f"<results>/primers/{extract_unique_sample_column_value(wc.sample, 'panel')}_primer_regions.tsv",
+    otherwise="<results>/primers/uniform_primer_regions.tsv",
+)
 
 
 def get_markduplicates_extra(wildcards):
@@ -341,6 +334,13 @@ def sample_has_umis(wildcards):
     return pd.notna(extract_unique_sample_column_value(wildcards.sample, "umi_read"))
 
 
+get_fastp_extra = branch(
+    sample_has_umis,
+    then=lambda wc: config["params"]["fastp"] + get_annotate_umis_params(wc),
+    otherwise=lambda wc: config["params"]["fastp"],
+)
+
+
 def get_annotate_umis_params(wildcards):
     translate_param = {"fq1": "read1", "fq2": "read2", "both": "per_read"}
     return "--umi --umi_loc {read} --umi_len {umi_len}".format(
@@ -349,18 +349,6 @@ def get_annotate_umis_params(wildcards):
         ],
         umi_len=str(extract_unique_sample_column_value(wildcards.sample, "umi_len")),
     )
-
-
-def get_filter_params(wildcards):
-    if isinstance(get_panel_primer_input(wildcards.panel), list):
-        return "-b -F 12"
-    return "-b -F 4"
-
-
-def get_single_primer_flag(wildcards):
-    if not isinstance(get_sample_primer_fastas(wildcards.sample), list):
-        return "--first-of-pair"
-    return ""
 
 
 def get_shortest_primer_length(primers):

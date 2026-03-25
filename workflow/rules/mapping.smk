@@ -164,8 +164,8 @@ rule mark_duplicates:
     input:
         bams=branch(
             sample_has_umis,
-            then=lambda wc: f"<results>/mapped/{get_aligner(wc)}/{{sample}}.annotated.bam",
-            otherwise=lambda wc: f"<results>/mapped/{get_aligner(wc)}/{{sample}}.sorted.bam",
+            then=f"<results>/mapped/{get_aligner}/{{sample}}.annotated.bam",
+            otherwise=f"<results>/mapped/{get_aligner}/{{sample}}.sorted.bam",
         ),
     output:
         bam=temp("<results>/dedup/{sample}.bam"),

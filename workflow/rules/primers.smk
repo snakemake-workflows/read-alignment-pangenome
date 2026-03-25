@@ -35,7 +35,11 @@ rule trim_primers:
         trimmed=temp("<results>/trimmed/{sample}.trimmed.bam"),
     params:
         sort_order="Coordinate",
-        single_primer=get_single_primer_flag,
+        single_primer=branch(
+            lambda wc: not isinstance(get_sample_primer_fastas(wc.sample), list),
+            then="--first-of-pair",
+            otherwise="",
+        ),
     conda:
         "../envs/fgbio.yaml"
     log:
@@ -68,7 +72,11 @@ rule filter_unmapped_primers:
     output:
         "<results>/primers/{panel}_primers.filtered.bam",
     params:
-        extra=get_filter_params,
+        extra=branch(
+            lambda wc: isinstance(get_panel_primer_input(wc.panel), list),
+            then="-b -F 12",
+            otherwise="-b -F 4",
+        ),
     log:
         "<logs>/primers/{panel}_primers_filtered.log",
     wrapper:
@@ -83,7 +91,11 @@ rule primer_to_bed:
     wildcard_constraints:
         ext="bedpe|bed",
     params:
-        format=lambda wc: "-bedpe" if wc.ext == "bedpe" else "",
+        format=branch(
+            lambda wc: wc.ext == "bedpe",
+            then="-bedpe",
+            otherwise="",
+        ),
     log:
         "<logs>/primers/{panel}_primers_{ext}.log",
     conda:
