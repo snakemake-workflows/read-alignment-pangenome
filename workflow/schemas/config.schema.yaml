@@ -29,11 +29,14 @@ properties:
             type: boolean
           source:
             type: string
+          release:
+            type: string
           version:
             type: string
         required:
           - activate
           - source
+          - release
           - version
     required:
       - species

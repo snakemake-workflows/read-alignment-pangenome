@@ -15,7 +15,8 @@ ref:
   pangenome:
     activate: true
     source: "hprc"
-    version: "v1.1"
+    release: "release2"
+    version: "v2.0"
 
 primers:
   trimming:
