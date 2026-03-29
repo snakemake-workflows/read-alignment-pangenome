@@ -213,6 +213,12 @@ def get_recalibrate_quality_input(wildcards, bai=False):
         return get_consensus_input(wildcards, bai)
 
 
+def get_final_bam_input(wildcards):
+    if is_activated("base_recalibration"):
+        return "<results>/recal/{sample}.bam"
+    return get_recalibrate_quality_input(wildcards)
+
+
 def get_consensus_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     if sample_has_primers(wildcards):

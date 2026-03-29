@@ -8,6 +8,9 @@ remove_duplicates:
 calc_consensus_reads:
   activate: true
 
+base_recalibration:
+  activate: true
+
 ref:
   species: "homo_sapiens"
   release: 111

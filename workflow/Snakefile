@@ -42,5 +42,5 @@ onerror:
 
 rule all:
     input:
-        expand("<results>/recal/{sample}.bam", sample=list(samples.index)),
+        expand("<results>/{sample}.bam", sample=list(samples.index)),
     default_target: True

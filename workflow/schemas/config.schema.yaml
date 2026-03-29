@@ -81,6 +81,14 @@ properties:
     required:
       - activate
 
+  base_recalibration:
+    type: object
+    properties:
+      activate:
+        type: boolean
+    required:
+      - activate
+
   params:
     type: object
     properties:
@@ -115,4 +123,5 @@ required:
   - primers
   - remove_duplicates
   - calc_consensus_reads
+  - base_recalibration
   - params

@@ -27,3 +27,14 @@ rule tabix_known_variants:
     cache: "omit-software"
     wrapper:
         "v2.3.2/bio/tabix/index"
+
+
+rule get_final_bam:
+    input:
+        bam=get_final_bam_input,
+    output:
+        bam="<results>/{sample}.bam",
+    log:
+        "<logs>/final-bam/{sample}.log",
+    shell:
+        "ln {input.bam} {output.bam} 2> {log}"
