@@ -381,23 +381,20 @@ def get_primer_extra(wildcards, input):
     return extra
 
 
-def get_pangenome_url(wildcards):
+def get_pangenome_url(datatype):
     build = config["ref"]["build"].lower()
     source = config["ref"]["pangenome"]["source"]
-    release = config["ref"]["pangenome"]["release"]
     version = config["ref"]["pangenome"]["version"]
-
     if config["ref"]["species"] != "homo_sapiens" or build not in ["grch37", "grch38"]:
         raise ValueError(
             "Unsupported combination of species and build. Only homo_sapiens and GRCh37/GRCh38 are supported for pangenome mapping."
         )
-
     if source != "hprc":
         raise ValueError(
             "Unsupported pangenome source. Only 'hprc' is currently supported."
         )
     return (
-        "https://human-pangenomics.s3.amazonaws.com/pangenomes/freeze/"
-        f"{release}/minigraph-cactus/"
-        f"hprc-{version}-mc-{build}.wave.vcf.gz"
+        "https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/"
+        "freeze1/minigraph-cactus/"
+        f"hprc-{version}-mc-{build}/hprc-{version}-mc-{build}.{datatype}"
     )

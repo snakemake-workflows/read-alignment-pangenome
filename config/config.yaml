@@ -16,12 +16,10 @@ ref:
     # if active, reads will be aligned to given pangenome instead of to the linear reference genome
     # Important: this is only supported for homo_sapiens so far
     activate: true
-    # Pangenome source
+    # Pangenome source and version: Only 'hprc' and v1.1 are supported for now.
+    # see https://github.com/human-pangenomics/hpp_pangenome_resources/?tab=readme-ov-file#minigraph-cactus for details
     source: hprc
-    # Pangenome release folder in the HPRC bucket. e.g release2
-    release: release2
-    # Pangenome version in the file name, e.g v2.0
-    version: v2.0
+    version: v1.1
     # Optional: override pangenome download base URL (defaults to upstream S3 root if not set)
     # base_url: "https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus"
 
