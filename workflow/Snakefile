@@ -16,9 +16,24 @@ inputflags:
 container: "docker://continuumio/miniconda3"
 
 
-# load rules
+# load helpers first
 # -----------------------------------------------------
 include: "rules/common.smk"
+
+
+# config-driven pathvars for candidate final BAM stages
+# -----------------------------------------------------
+pathvars:
+    results_bqsr=get_results_bqsr(),
+    results_consensus=get_results_consensus(),
+    results_trimmed=get_results_trimmed(),
+    results_dedup=get_results_dedup(),
+    results_mapped_bwa=get_results_mapped_bwa(),
+    results_mapped_vg=get_results_mapped_vg(),
+
+
+# load rules
+# -----------------------------------------------------
 include: "rules/utils.smk"
 include: "rules/ref.smk"
 include: "rules/trimming.smk"

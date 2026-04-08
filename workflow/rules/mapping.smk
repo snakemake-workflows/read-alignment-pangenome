@@ -3,7 +3,7 @@ rule map_reads_bwa:
         reads=get_map_reads_input,
         idx=access.random(rules.bwa_index.output),
     output:
-        temp("<results>/mapped/bwa/{sample}.bam"),
+        temp("<results>/mapped/bwa/{sample}.raw.bam"),
     log:
         "<logs>/bwa_mem/{sample}.log",
     params:
@@ -119,7 +119,7 @@ rule add_read_group:
             otherwise="<results>/mapped/vg/{sample}.reheadered.bam",
         ),
     output:
-        temp("<results>/mapped/vg/{sample}.bam"),
+        temp("<results_mapped_vg>/{sample}.bam"),
     log:
         "<logs>/samtools/add_rg/{sample}.log",
     params:
@@ -134,11 +134,11 @@ rule add_read_group:
 
 rule sort_alignments:
     input:
-        "<results>/mapped/{aligner}/{sample}.bam",
+        "<results>/mapped/bwa/{sample}.raw.bam",
     output:
-        temp("<results>/mapped/{aligner}/{sample}.sorted.bam"),
+        temp("<results_mapped_bwa>/{sample}.bam"),
     log:
-        "<logs>/sort/{aligner}/{sample}.log",
+        "<logs>/sort/bwa/{sample}.log",
     threads: 16
     resources:
         mem_mb=32000,
@@ -148,14 +148,18 @@ rule sort_alignments:
 
 rule annotate_umis:
     input:
-        bam="<results>/mapped/{aligner}/{sample}.sorted.bam",
-        idx="<results>/mapped/{aligner}/{sample}.sorted.bai",
+        bam=get_mapped_stage_input,
+        idx=lambda wc: get_mapped_stage_input(wc, bai=True),
     output:
-        temp("<results>/mapped/{aligner}/{sample}.annotated.bam"),
+        temp(
+            "<results>/mapped/{aligner}/{{sample}}.annotated.bam".format(
+                aligner=get_aligner
+            )
+        ),
     conda:
         "../envs/umi_tools.yaml"
     log:
-        "<logs>/annotate_bam/{aligner}/{sample}.log",
+        "<logs>/annotate_bam/{aligner}/{{sample}}.log".format(aligner=get_aligner),
     shell:
         "umi_tools group -I {input.bam} --paired --umi-separator : --output-bam -S {output} &> {log}"
 
@@ -164,18 +168,19 @@ rule mark_duplicates:
     input:
         bams=branch(
             sample_has_umis,
-            then=f"<results>/mapped/{get_aligner}/{{sample}}.annotated.bam",
-            otherwise=f"<results>/mapped/{get_aligner}/{{sample}}.sorted.bam",
+            then="<results>/mapped/{aligner}/{{sample}}.annotated.bam".format(
+                aligner=get_aligner
+            ),
+            otherwise=get_mapped_stage_input,
         ),
     output:
-        bam=temp("<results>/dedup/{sample}.bam"),
+        bam=temp("<results_dedup>/{sample}.bam"),
         metrics="<results>/qc/dedup/{sample}.metrics.txt",
     log:
         "<logs>/picard/dedup/{sample}.log",
     params:
         extra=get_markduplicates_extra,
     resources:
-        #https://broadinstitute.github.io/picard/faq.html
         mem_mb=3000,
     wrapper:
         "v2.5.0/bio/picard/markduplicates"
@@ -242,7 +247,7 @@ rule sort_consensus_reads:
     input:
         "<results>/consensus/{sample}.merged.bam",
     output:
-        temp("<results>/consensus/{sample}.bam"),
+        temp("<results_consensus>/{sample}.bam"),
     log:
         "<logs>/samtools_sort/{sample}.log",
     threads: 16
@@ -287,12 +292,12 @@ rule apply_bqsr:
         ref_fai=genome_fai,
         recal_table="<results>/recal/{sample}.grp",
     output:
-        bam=protected("<results>/recal/{sample}.bam"),
-        bai="<results>/recal/{sample}.bai",
+        bam=protected("<results_bqsr>/{sample}.bam"),
+        bai="<results_bqsr>/{sample}.bai",
     log:
         "<logs>/gatk/gatk_applybqsr/{sample}.log",
     params:
-        extra=lookup(within=config, dpath="params/gatk/applyBQSR"),  # optional
-        java_opts="",  # optional
+        extra=lookup(within=config, dpath="params/gatk/applyBQSR"),
+        java_opts="",
     wrapper:
         "v2.3.2/bio/gatk/applybqsr"

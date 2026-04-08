@@ -88,6 +88,144 @@ def is_activated(xpath):
     return bool(c.get("activate", False))
 
 
+def get_results_bqsr():
+    if bool(
+        lookup(
+            within=config,
+            dpath="base_recalibration/activate",
+            default=False,
+        )
+    ):
+        return "results"
+    return "results/recal"
+
+
+def get_results_consensus():
+    if bool(
+        lookup(
+            within=config,
+            dpath="calc_consensus_reads/activate",
+            default=False,
+        )
+    ) and not bool(
+        lookup(
+            within=config,
+            dpath="base_recalibration/activate",
+            default=False,
+        )
+    ):
+        return "results"
+    return "results/consensus"
+
+
+def get_results_trimmed():
+    primers_active = (
+        bool(config["primers"]["trimming"].get("primers_fa1"))
+        or bool(config["primers"]["trimming"].get("primers_fa2"))
+        or ("panel" in samples.columns and samples["panel"].notna().any())
+    )
+
+    if (
+        primers_active
+        and not bool(
+            lookup(
+                within=config,
+                dpath="calc_consensus_reads/activate",
+                default=False,
+            )
+        )
+        and not bool(
+            lookup(
+                within=config,
+                dpath="base_recalibration/activate",
+                default=False,
+            )
+        )
+    ):
+        return "results"
+    return "results/trimmed"
+
+
+def get_results_dedup():
+    primers_active = (
+        bool(config["primers"]["trimming"].get("primers_fa1"))
+        or bool(config["primers"]["trimming"].get("primers_fa2"))
+        or ("panel" in samples.columns and samples["panel"].notna().any())
+    )
+
+    if (
+        bool(
+            lookup(
+                within=config,
+                dpath="remove_duplicates/activate",
+                default=False,
+            )
+        )
+        and not primers_active
+        and not bool(
+            lookup(
+                within=config,
+                dpath="calc_consensus_reads/activate",
+                default=False,
+            )
+        )
+        and not bool(
+            lookup(
+                within=config,
+                dpath="base_recalibration/activate",
+                default=False,
+            )
+        )
+    ):
+        return "results"
+    return "results/dedup"
+
+
+def mapped_stage_is_final():
+    primers_active = (
+        bool(config["primers"]["trimming"].get("primers_fa1"))
+        or bool(config["primers"]["trimming"].get("primers_fa2"))
+        or ("panel" in samples.columns and samples["panel"].notna().any())
+    )
+
+    return (
+        not bool(
+            lookup(
+                within=config,
+                dpath="remove_duplicates/activate",
+                default=False,
+            )
+        )
+        and not primers_active
+        and not bool(
+            lookup(
+                within=config,
+                dpath="calc_consensus_reads/activate",
+                default=False,
+            )
+        )
+        and not bool(
+            lookup(
+                within=config,
+                dpath="base_recalibration/activate",
+                default=False,
+            )
+        )
+    )
+
+
+def get_results_mapped_bwa():
+    if not is_activated("ref/pangenome") and mapped_stage_is_final():
+        return "results"
+    return "results/mapped/bwa"
+
+
+def get_results_mapped_vg():
+    if is_activated("ref/pangenome") and mapped_stage_is_final():
+        return "results"
+    return "results/mapped/vg"
+
+
 get_aligner = branch(
     is_activated("ref/pangenome"),
     then="vg",
@@ -204,37 +342,32 @@ get_map_reads_input = branch(
 )
 
 
+def get_mapped_stage_input(wildcards, bai=False):
+    ext = "bai" if bai else "bam"
+    if is_activated("ref/pangenome"):
+        return f"<results_mapped_vg>/{{sample}}.{ext}"
+    return f"<results_mapped_bwa>/{{sample}}.{ext}"
+
+
 def get_recalibrate_quality_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
-    # Post-processing of DNA samples
     if is_activated("calc_consensus_reads"):
-        return "<results>/consensus/{{sample}}.{ext}".format(ext=ext)
-    else:
-        return get_consensus_input(wildcards, bai)
-
-
-def get_final_bam_input(wildcards):
-    if is_activated("base_recalibration"):
-        return "<results>/recal/{sample}.bam"
-    return get_recalibrate_quality_input(wildcards)
+        return f"<results_consensus>/{{sample}}.{ext}"
+    return get_consensus_input(wildcards, bai)
 
 
 def get_consensus_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     if sample_has_primers(wildcards):
-        return f"<results>/trimmed/{{sample}}.trimmed.{ext}"
-    else:
-        return get_trimming_input(wildcards, bai)
+        return f"<results_trimmed>/{{sample}}.{ext}"
+    return get_trimming_input(wildcards, bai)
 
 
 def get_trimming_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     if is_activated("remove_duplicates"):
-        return "<results>/dedup/{{sample}}.{ext}".format(ext=ext)
-    else:
-        return "<results>/mapped/{aligner}/{{sample}}.sorted.{ext}".format(
-            aligner=get_aligner, ext=ext
-        )
+        return f"<results_dedup>/{{sample}}.{ext}"
+    return get_mapped_stage_input(wildcards, bai)
 
 
 def extract_unique_sample_column_value(sample, col_name):
