@@ -89,30 +89,23 @@ def is_activated(xpath):
 
 
 def get_results_bqsr():
-    if bool(
-        lookup(
-            within=config,
-            dpath="base_recalibration/activate",
-            default=False,
-        )
+    if lookup(
+        within=config,
+        dpath="base_recalibration/activate",
+        default=False,
     ):
         return "results"
     return "results/recal"
 
 
 def get_results_consensus():
-    if bool(
+    if (
         lookup(
             within=config,
             dpath="calc_consensus_reads/activate",
             default=False,
         )
-    ) and not bool(
-        lookup(
-            within=config,
-            dpath="base_recalibration/activate",
-            default=False,
-        )
+        and not get_results_bqsr()
     ):
         return "results"
     return "results/consensus"
