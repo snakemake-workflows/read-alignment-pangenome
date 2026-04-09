@@ -16,6 +16,7 @@ rule tabix_known_variants:
         "<resources>/{prefix}.{format}.gz.tbi",
     log:
         "<logs>/tabix/{prefix}.{format}.log",
+    cache: "omit-software"
     params:
         extra=branch(
             evaluate("{format}"),
@@ -24,6 +25,5 @@ rule tabix_known_variants:
                 "txt": "-s 1 -b 2 -e 2",
             },
         ),
-    cache: "omit-software"
     wrapper:
         "v2.3.2/bio/tabix/index"
