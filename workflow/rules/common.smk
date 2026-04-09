@@ -105,105 +105,71 @@ def get_results_consensus():
             dpath="calc_consensus_reads/activate",
             default=False,
         )
-        and not get_results_bqsr()
+        and get_results_bqsr() == "results/recal"
     ):
         return "results"
     return "results/consensus"
 
 
 def get_results_trimmed():
-    primers_active = (
-        bool(config["primers"]["trimming"].get("primers_fa1"))
-        or bool(config["primers"]["trimming"].get("primers_fa2"))
-        or ("panel" in samples.columns and samples["panel"].notna().any())
+    primers_active = any(
+        (
+            config["primers"]["trimming"].get("primers_fa1"),
+            config["primers"]["trimming"].get("primers_fa2"),
+            "panel" in samples.columns and samples["panel"].notna().any(),
+        )
     )
 
     if (
         primers_active
-        and not bool(
-            lookup(
-                within=config,
-                dpath="calc_consensus_reads/activate",
-                default=False,
-            )
-        )
-        and not bool(
-            lookup(
-                within=config,
-                dpath="base_recalibration/activate",
-                default=False,
-            )
-        )
+        and get_results_consensus() == "results/consensus"
+        and get_results_bqsr() == "results/recal"
     ):
         return "results"
     return "results/trimmed"
 
 
 def get_results_dedup():
-    primers_active = (
-        bool(config["primers"]["trimming"].get("primers_fa1"))
-        or bool(config["primers"]["trimming"].get("primers_fa2"))
-        or ("panel" in samples.columns and samples["panel"].notna().any())
+    primers_active = any(
+        (
+            config["primers"]["trimming"].get("primers_fa1"),
+            config["primers"]["trimming"].get("primers_fa2"),
+            "panel" in samples.columns and samples["panel"].notna().any(),
+        )
     )
 
     if (
-        bool(
-            lookup(
-                within=config,
-                dpath="remove_duplicates/activate",
-                default=False,
-            )
+        lookup(
+            within=config,
+            dpath="remove_duplicates/activate",
+            default=False,
         )
         and not primers_active
-        and not bool(
-            lookup(
-                within=config,
-                dpath="calc_consensus_reads/activate",
-                default=False,
-            )
-        )
-        and not bool(
-            lookup(
-                within=config,
-                dpath="base_recalibration/activate",
-                default=False,
-            )
-        )
+        and get_results_consensus() == "results/consensus"
+        and get_results_bqsr() == "results/recal"
     ):
         return "results"
     return "results/dedup"
 
 
 def mapped_stage_is_final():
-    primers_active = (
-        bool(config["primers"]["trimming"].get("primers_fa1"))
-        or bool(config["primers"]["trimming"].get("primers_fa2"))
-        or ("panel" in samples.columns and samples["panel"].notna().any())
+    primers_active = any(
+        (
+            config["primers"]["trimming"].get("primers_fa1"),
+            config["primers"]["trimming"].get("primers_fa2"),
+            "panel" in samples.columns and samples["panel"].notna().any(),
+        )
     )
 
     return (
-        not bool(
-            lookup(
-                within=config,
-                dpath="remove_duplicates/activate",
-                default=False,
-            )
+        not lookup(
+            within=config,
+            dpath="remove_duplicates/activate",
+            default=False,
         )
         and not primers_active
-        and not bool(
-            lookup(
-                within=config,
-                dpath="calc_consensus_reads/activate",
-                default=False,
-            )
-        )
-        and not bool(
-            lookup(
-                within=config,
-                dpath="base_recalibration/activate",
-                default=False,
-            )
-        )
+        and get_results_consensus() == "results/consensus"
+        and get_results_bqsr() == "results/recal"
     )
 
 
