@@ -3,13 +3,13 @@ rule get_genome:
         genome,
     log:
         "<logs>/get-genome.log",
+    cache: "omit-software"
     params:
         species=lookup(within=config, dpath="ref/species"),
         datatype="dna",
         build=lookup(within=config, dpath="ref/build"),
         release=lookup(within=config, dpath="ref/release"),
         chromosome=lookup(within=config, dpath="ref/chromosome", default=None),
-    cache: "omit-software"
     wrapper:
         "v7.3.0/bio/reference/ensembl-sequence"
 
@@ -33,9 +33,9 @@ rule genome_dict:
         genome_dict,
     log:
         "<logs>/samtools/create_dict.log",
+    cache: "omit-software"
     conda:
         "../envs/samtools.yaml"
-    cache: "omit-software"
     shell:
         "samtools dict {input} > {output} 2> {log} "
 
@@ -48,13 +48,13 @@ rule get_known_variants:
         vcf="<resources>/variation.vcf.gz",
     log:
         "<logs>/get-known-variants.log",
+    cache: "omit-software"
     params:
         species=lookup(within=config, dpath="ref/species"),
         release=lookup(within=config, dpath="ref/release"),
         build=lookup(within=config, dpath="ref/build"),
         type="all",
         chromosome=lookup(within=config, dpath="ref/chromosome", default=None),
-    cache: "omit-software"
     wrapper:
         "v7.5.0/bio/reference/ensembl-variation"
 
@@ -66,9 +66,9 @@ rule remove_iupac_codes:
         "<resources>/variation.noiupac.vcf.gz",
     log:
         "<logs>/fix-iupac-alleles.log",
+    cache: "omit-software"
     conda:
         "../envs/rbt.yaml"
-    cache: "omit-software"
     shell:
         "(rbt vcf-fix-iupac-alleles < {input} | bcftools view -Oz > {output}) 2> {log}"
 
@@ -88,12 +88,12 @@ rule bwa_index:
 rule get_pangenome:
     output:
         f"{pangenome_prefix}.{{ext}}",
-    params:
-        url=lambda wc: get_pangenome_url(wc.ext),
-    wildcard_constraints:
-        ext="hapl|gbz",
     log:
         "<logs>/pangenome/{ext}.log",
+    wildcard_constraints:
+        ext="hapl|gbz",
     cache: "omit-software"
+    params:
+        url=lambda wc: get_pangenome_url(wc.ext),
     shell:
         "curl -o {output} {params.url} 2> {log}"

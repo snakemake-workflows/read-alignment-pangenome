@@ -2,10 +2,10 @@ rule get_sra:
     output:
         "sra/{accession}_1.fastq.gz",
         "sra/{accession}_2.fastq.gz",
-    params:
-        extra=lookup(within=config, dpath="params/get_sra/extra", default=""),
     log:
         "<logs>/get-sra/{accession}.log",
+    params:
+        extra=lookup(within=config, dpath="params/get_sra/extra", default=""),
     wrapper:
         "v7.6.0/bio/sra-tools/fasterq-dump"
 
@@ -33,10 +33,10 @@ rule fastp_se:
         json="<results>/trimmed/{sample}/{unit}.single.json",
     log:
         "<logs>/fastp/se/{sample}_{unit}.log",
+    threads: 8
     params:
         adapters=get_fastp_adapters,
         extra=get_fastp_extra,
-    threads: 8
     wrapper:
         "v6.2.0/bio/fastp"
 
@@ -53,10 +53,10 @@ rule fastp_pe:
         json="<results>/trimmed/{sample}/{unit}.paired.json",
     log:
         "<logs>/fastp/pe/{sample}_{unit}.log",
+    threads: 8
     params:
         adapters=get_fastp_adapters,
         extra=get_fastp_extra,
-    threads: 8
     wrapper:
         "v6.2.0/bio/fastp"
 

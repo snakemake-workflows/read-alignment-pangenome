@@ -5,10 +5,10 @@ rule assign_primers:
     output:
         assigned=temp("<results>/primers/{sample}.assigned.bam"),
         metric="<results>/primers/{sample}.metric.bam",
-    conda:
-        "../envs/fgbio.yaml"
     log:
         "<logs>/primers/assignment/{sample}.log",
+    conda:
+        "../envs/fgbio.yaml"
     shell:
         "fgbio AssignPrimers -i {input.bam} -p {input.primers} -m {output.metric} -o {output.assigned} &> {log}"
 
@@ -19,10 +19,10 @@ rule filter_primerless_reads:
     output:
         primers=temp("<results>/primers/{sample}.primers.bam"),
         primerless=temp("<results>/primers/{sample}.primerless.bam"),
-    conda:
-        "../envs/filter_reads.yaml"
     log:
         "<logs>/primers/filter/{sample}.log",
+    conda:
+        "../envs/filter_reads.yaml"
     script:
         "../scripts/filter_primers.rs"
 
@@ -33,6 +33,10 @@ rule trim_primers:
         primers=get_primer_regions,
     output:
         trimmed=temp("<results_trimmed>/{sample}.bam"),
+    log:
+        "<logs>/trimming/{sample}.log",
+    conda:
+        "../envs/fgbio.yaml"
     params:
         sort_order="Coordinate",
         single_primer=branch(
@@ -40,10 +44,6 @@ rule trim_primers:
             then="--first-of-pair",
             otherwise="",
         ),
-    conda:
-        "../envs/fgbio.yaml"
-    log:
-        "<logs>/trimming/{sample}.log",
     shell:
         "fgbio TrimPrimers -H -i {input.bam} -p {input.primers} -s {params.sort_order} {params.single_primer} -o {output.trimmed} &> {log}"
 
@@ -56,12 +56,12 @@ rule map_primers:
         "<results>/primers/{panel}_primers.bam",
     log:
         "<logs>/bwa_mem/{panel}.log",
+    threads: 8
     params:
         extra=get_primer_extra,
         sorting="none",  # Can be 'none', 'samtools' or 'picard'.
         sort_order="queryname",  # Can be 'queryname' or 'coordinate'.
         sort_extra="",  # Extra args for samtools/picard.
-    threads: 8
     wrapper:
         "v2.13.0/bio/bwa/mem"
 
@@ -71,14 +71,14 @@ rule filter_unmapped_primers:
         "<results>/primers/{panel}_primers.bam",
     output:
         "<results>/primers/{panel}_primers.filtered.bam",
+    log:
+        "<logs>/primers/{panel}_primers_filtered.log",
     params:
         extra=branch(
             lambda wc: isinstance(get_panel_primer_input(wc.panel), list),
             then="-b -F 12",
             otherwise="-b -F 4",
         ),
-    log:
-        "<logs>/primers/{panel}_primers_filtered.log",
     wrapper:
         "v2.3.2/bio/samtools/view"
 
@@ -88,18 +88,18 @@ rule primer_to_bed:
         "<results>/primers/{panel}_primers.filtered.bam",
     output:
         "<results>/primers/{panel}_primers.{ext}",
+    log:
+        "<logs>/primers/{panel}_primers_{ext}.log",
     wildcard_constraints:
         ext="bedpe|bed",
+    conda:
+        "../envs/bedtools.yaml"
     params:
         format=branch(
             lambda wc: wc.ext == "bedpe",
             then="-bedpe",
             otherwise="",
         ),
-    log:
-        "<logs>/primers/{panel}_primers_{ext}.log",
-    conda:
-        "../envs/bedtools.yaml"
     shell:
         "samtools sort -n {input} | bamToBed -i - {params.format} > {output} 2> {log}"
 

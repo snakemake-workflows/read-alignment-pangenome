@@ -56,6 +56,6 @@ onerror:
 
 
 rule all:
+    default_target: True
     input:
         expand("<results>/{sample}.bam", sample=list(samples.index)),
-    default_target: True
