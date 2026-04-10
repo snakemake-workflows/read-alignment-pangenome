@@ -24,12 +24,22 @@ include: "rules/common.smk"
 # config-driven pathvars for candidate final BAM stages
 # -----------------------------------------------------
 pathvars:
-    results_bqsr=get_results_bqsr(),
-    results_consensus=get_results_consensus(),
-    results_trimmed=get_results_trimmed(),
-    results_dedup=get_results_dedup(),
-    results_mapped_bwa=get_results_mapped_bwa(),
-    results_mapped_vg=get_results_mapped_vg(),
+    results_bqsr=branch(bqsr_is_final(), then=final_bam_path, otherwise="results/recal"),
+    results_consensus=branch(
+        consensus_is_final(), then=final_bam_path, otherwise="results/consensus"
+    ),
+    results_trimmed=branch(
+        trimmed_is_final(), then=final_bam_path, otherwise="results/trimmed"
+    ),
+    results_dedup=branch(
+        dedup_is_final(), then=final_bam_path, otherwise="results/dedup"
+    ),
+    results_mapped_bwa=branch(
+        bwa_mapping_is_final(), then=final_bam_path, otherwise="results/mapped/bwa"
+    ),
+    results_mapped_vg=branch(
+        vg_mapping_is_final(), then=final_bam_path, otherwise="results/mapped/vg"
+    ),
 
 
 # load rules
@@ -58,4 +68,4 @@ onerror:
 rule all:
     default_target: True
     input:
-        expand("<results>/{sample}.bam", sample=list(samples.index)),
+        expand(f"{final_bam_path}/{{sample}}.bam", sample=list(samples.index)),

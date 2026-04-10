@@ -119,7 +119,11 @@ rule add_read_group:
             otherwise="<results>/mapped/vg/{sample}.reheadered.bam",
         ),
     output:
-        temp("<results_mapped_vg>/{sample}.bam"),
+        branch(
+            vg_mapping_is_final(),
+            then="<results_mapped_vg>/{sample}.bam",
+            otherwise=temp("<results_mapped_vg>/{sample}.bam"),
+        ),
     log:
         "<logs>/samtools/add_rg/{sample}.log",
     conda:
@@ -136,7 +140,11 @@ rule sort_alignments:
     input:
         "<results>/mapped/bwa/{sample}.raw.bam",
     output:
-        temp("<results_mapped_bwa>/{sample}.bam"),
+        branch(
+            bwa_mapping_is_final(),
+            then="<results_mapped_bwa>/{sample}.bam",
+            otherwise=temp("<results_mapped_bwa>/{sample}.bam"),
+        ),
     log:
         "<logs>/sort/bwa/{sample}.log",
     threads: 16
@@ -174,7 +182,11 @@ rule mark_duplicates:
             otherwise=get_mapped_stage_input,
         ),
     output:
-        bam=temp("<results_dedup>/{sample}.bam"),
+        bam=branch(
+            dedup_is_final(),
+            then="<results_dedup>/{sample}.bam",
+            otherwise=temp("<results_dedup>/{sample}.bam"),
+        ),
         metrics="<results>/qc/dedup/{sample}.metrics.txt",
     log:
         "<logs>/picard/dedup/{sample}.log",
@@ -247,7 +259,11 @@ rule sort_consensus_reads:
     input:
         "<results>/consensus/{sample}.merged.bam",
     output:
-        temp("<results_consensus>/{sample}.bam"),
+        branch(
+            consensus_is_final(),
+            then="<results_consensus>/{sample}.bam",
+            otherwise=temp("<results_consensus>/{sample}.bam"),
+        ),
     log:
         "<logs>/samtools_sort/{sample}.log",
     threads: 16

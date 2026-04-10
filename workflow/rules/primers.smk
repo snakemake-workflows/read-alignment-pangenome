@@ -32,7 +32,11 @@ rule trim_primers:
         bam="<results>/primers/{sample}.primers.bam",
         primers=get_primer_regions,
     output:
-        trimmed=temp("<results_trimmed>/{sample}.bam"),
+        trimmed=branch(
+            trimmed_is_final(),
+            then="<results_trimmed>/{sample}.bam",
+            otherwise=temp("<results_trimmed>/{sample}.bam"),
+        ),
     log:
         "<logs>/trimming/{sample}.log",
     conda:

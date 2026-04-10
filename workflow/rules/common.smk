@@ -35,6 +35,7 @@ genome_fai = f"{genome}.fai"
 genome_dict = f"{genome_prefix}.dict"
 pangenome_name = f"pangenome.{species}.{build}"
 pangenome_prefix = f"<resources>/{pangenome_name}"
+final_bam_path = "results/final_bam"
 
 
 def _group_or_sample(row):
@@ -88,31 +89,27 @@ def is_activated(xpath):
     return bool(c.get("activate", False))
 
 
-def get_results_bqsr():
-    if lookup(
+def bqsr_is_final():
+    return lookup(
         within=config,
         dpath="base_recalibration/activate",
         default=False,
-    ):
-        return "results"
-    return "results/recal"
+    )
 
 
-def get_results_consensus():
-    if (
+def consensus_is_final():
+    return (
         lookup(
             within=config,
             dpath="calc_consensus_reads/activate",
             default=False,
         )
-        and get_results_bqsr() == "results/recal"
-    ):
-        return "results"
-    return "results/consensus"
+        and not bqsr_is_final()
+    )
 
 
-def get_results_trimmed():
-    primers_active = any(
+def primers_are_active():
+    return any(
         (
             config["primers"]["trimming"].get("primers_fa1"),
             config["primers"]["trimming"].get("primers_fa2"),
@@ -120,69 +117,43 @@ def get_results_trimmed():
         )
     )
 
-    if (
-        primers_active
-        and get_results_consensus() == "results/consensus"
-        and get_results_bqsr() == "results/recal"
-    ):
-        return "results"
-    return "results/trimmed"
+
+def trimmed_is_final():
+    return primers_are_active() and not consensus_is_final() and not bqsr_is_final()
 
 
-def get_results_dedup():
-    primers_active = any(
-        (
-            config["primers"]["trimming"].get("primers_fa1"),
-            config["primers"]["trimming"].get("primers_fa2"),
-            "panel" in samples.columns and samples["panel"].notna().any(),
-        )
-    )
-
-    if (
+def dedup_is_final():
+    return (
         lookup(
             within=config,
             dpath="remove_duplicates/activate",
             default=False,
         )
-        and not primers_active
-        and get_results_consensus() == "results/consensus"
-        and get_results_bqsr() == "results/recal"
-    ):
-        return "results"
-    return "results/dedup"
+        and not primers_are_active()
+        and not consensus_is_final()
+        and not bqsr_is_final()
+    )
 
 
 def mapped_stage_is_final():
-    primers_active = any(
-        (
-            config["primers"]["trimming"].get("primers_fa1"),
-            config["primers"]["trimming"].get("primers_fa2"),
-            "panel" in samples.columns and samples["panel"].notna().any(),
-        )
-    )
-
     return (
         not lookup(
             within=config,
             dpath="remove_duplicates/activate",
             default=False,
         )
-        and not primers_active
-        and get_results_consensus() == "results/consensus"
-        and get_results_bqsr() == "results/recal"
+        and not primers_are_active()
+        and not consensus_is_final()
+        and not bqsr_is_final()
     )
 
 
-def get_results_mapped_bwa():
-    if not is_activated("ref/pangenome") and mapped_stage_is_final():
-        return "results"
-    return "results/mapped/bwa"
+def bwa_mapping_is_final():
+    return not is_activated("ref/pangenome") and mapped_stage_is_final()
 
 
-def get_results_mapped_vg():
-    if is_activated("ref/pangenome") and mapped_stage_is_final():
-        return "results"
-    return "results/mapped/vg"
+def vg_mapping_is_final():
+    return is_activated("ref/pangenome") and mapped_stage_is_final()
 
 
 get_aligner = branch(
