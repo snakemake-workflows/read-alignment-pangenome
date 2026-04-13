@@ -108,18 +108,17 @@ def consensus_is_final():
     )
 
 
-def primers_are_active():
-    return any(
-        (
-            config["primers"]["trimming"].get("primers_fa1"),
-            config["primers"]["trimming"].get("primers_fa2"),
-            "panel" in samples.columns and samples["panel"].notna().any(),
-        )
-    )
-
-
 def trimmed_is_final():
-    return primers_are_active() and not consensus_is_final() and not bqsr_is_final()
+    return (
+        any(
+            (
+                config["primers"]["trimming"].get("primers_fa1"),
+                "panel" in samples.columns and samples["panel"].notna().any(),
+            )
+        )
+        and not consensus_is_final()
+        and not bqsr_is_final()
+    )
 
 
 def dedup_is_final():
@@ -129,7 +128,7 @@ def dedup_is_final():
             dpath="remove_duplicates/activate",
             default=False,
         )
-        and not primers_are_active()
+        and not trimmed_is_final()
         and not consensus_is_final()
         and not bqsr_is_final()
     )
@@ -137,23 +136,33 @@ def dedup_is_final():
 
 def mapped_stage_is_final():
     return (
-        not lookup(
-            within=config,
-            dpath="remove_duplicates/activate",
-            default=False,
-        )
-        and not primers_are_active()
+        not dedup_is_final()
+        and not trimmed_is_final()
         and not consensus_is_final()
         and not bqsr_is_final()
     )
 
 
 def bwa_mapping_is_final():
-    return not is_activated("ref/pangenome") and mapped_stage_is_final()
+    return (
+        not lookup(
+            within=config,
+            dpath="ref/pangenome/activate",
+            default=False,
+        )
+        and mapped_stage_is_final()
+    )
 
 
 def vg_mapping_is_final():
-    return is_activated("ref/pangenome") and mapped_stage_is_final()
+    return (
+        lookup(
+            within=config,
+            dpath="ref/pangenome/activate",
+            default=False,
+        )
+        and mapped_stage_is_final()
+    )
 
 
 get_aligner = branch(
