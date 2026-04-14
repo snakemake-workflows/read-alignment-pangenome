@@ -8,6 +8,9 @@ remove_duplicates:
 calc_consensus_reads:
   activate: false
 
+base_recalibration:
+  activate: false
+
 ref:
   # Number of chromosomes to consider for calling.
   # The first n entries of the FASTA will be considered.

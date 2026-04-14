@@ -4,20 +4,26 @@ rule bam_index:
     output:
         "{prefix}.bai",
     log:
-        "logs/bam-index/{prefix}.log",
+        "<logs>/bam-index/{prefix}.log",
     wrapper:
         "v2.3.2/bio/samtools/index"
 
 
 rule tabix_known_variants:
     input:
-        "resources/{prefix}.{format}.gz",
+        "<resources>/{prefix}.{format}.gz",
     output:
-        "resources/{prefix}.{format}.gz.tbi",
+        "<resources>/{prefix}.{format}.gz.tbi",
     log:
-        "logs/tabix/{prefix}.{format}.log",
-    params:
-        get_tabix_params,
+        "<logs>/tabix/{prefix}.{format}.log",
     cache: "omit-software"
+    params:
+        extra=branch(
+            evaluate("{format}"),
+            cases={
+                "vcf": "-p vcf",
+                "txt": "-s 1 -b 2 -e 2",
+            },
+        ),
     wrapper:
         "v2.3.2/bio/tabix/index"

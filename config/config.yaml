@@ -47,6 +47,9 @@ remove_duplicates:
 calc_consensus_reads:
   activate: false
 
+base_recalibration:
+  activate: true
+
 params:
   fastp: ""
   picard:

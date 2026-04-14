@@ -29,12 +29,13 @@ species = config["ref"]["species"]
 build = config["ref"]["build"]
 release = config["ref"]["release"]
 genome_name = f"genome.{datatype_genome}.{species}.{build}.{release}"
-genome_prefix = f"resources/{genome_name}"
+genome_prefix = f"<resources>/{genome_name}"
 genome = f"{genome_prefix}.fasta"
 genome_fai = f"{genome}.fai"
 genome_dict = f"{genome_prefix}.dict"
 pangenome_name = f"pangenome.{species}.{build}"
-pangenome_prefix = f"resources/{pangenome_name}"
+pangenome_prefix = f"<resources>/{pangenome_name}"
+final_bam_path = "results/final_bam"
 
 
 def _group_or_sample(row):
@@ -81,18 +82,65 @@ primer_panels = (
 )
 
 
-def is_activated(xpath):
-    c = config
-    for entry in xpath.split("/"):
-        c = c.get(entry, {})
-    return bool(c.get("activate", False))
+def bqsr_is_final():
+    return lookup(
+        within=config,
+        dpath="base_recalibration/activate",
+        default=False,
+    )
 
 
-def get_aligner(wildcards):
-    if is_activated("ref/pangenome"):
-        return "vg"
-    else:
-        return "bwa"
+def consensus_is_final():
+    return (
+        lookup(
+            within=config,
+            dpath="calc_consensus_reads/activate",
+            default=False,
+        )
+        and not bqsr_is_final()
+    )
+
+
+def trimmed_is_final():
+    return (
+        any(
+            (
+                config["primers"]["trimming"].get("primers_fa1"),
+                "panel" in samples.columns and samples["panel"].notna().any(),
+            )
+        )
+        and not consensus_is_final()
+        and not bqsr_is_final()
+    )
+
+
+def dedup_is_final():
+    return (
+        lookup(
+            within=config,
+            dpath="remove_duplicates/activate",
+            default=False,
+        )
+        and not trimmed_is_final()
+        and not consensus_is_final()
+        and not bqsr_is_final()
+    )
+
+
+def mapping_is_final():
+    return (
+        not dedup_is_final()
+        and not trimmed_is_final()
+        and not consensus_is_final()
+        and not bqsr_is_final()
+    )
+
+
+get_aligner = branch(
+    lookup(within=config, dpath="ref/pangenome/activate"),
+    then="vg",
+    otherwise="bwa",
+)
 
 
 def get_fastp_input(wildcards):
@@ -179,13 +227,6 @@ def get_fastp_adapters(wildcards):
         return ""
 
 
-def get_fastp_extra(wildcards):
-    extra = config["params"]["fastp"]
-    if sample_has_umis(wildcards.sample):
-        extra += get_annotate_umis_params(wildcards)
-    return extra
-
-
 def is_paired_end(sample):
     sample_units = units.loc[sample]
     fq2_null = sample_units["fq2"].isnull()
@@ -201,62 +242,48 @@ def is_paired_end(sample):
     return all_paired
 
 
-def get_map_reads_input(wildcards):
-    if is_paired_end(wildcards.sample):
-        return [
-            "results/merged/{sample}_R1.fastq.gz",
-            "results/merged/{sample}_R2.fastq.gz",
-        ]
-    return "results/merged/{sample}_single.fastq.gz"
+get_map_reads_input = branch(
+    lambda wc: is_paired_end(wc.sample),
+    then=[
+        "<results>/merged/{sample}_R1.fastq.gz",
+        "<results>/merged/{sample}_R2.fastq.gz",
+    ],
+    otherwise="<results>/merged/{sample}_single.fastq.gz",
+)
 
 
-def get_markduplicates_input(wildcards):
-    aligner = get_aligner(wildcards)
-    if sample_has_umis(wildcards.sample):
-        return f"results/mapped/{aligner}/{{sample}}.annotated.bam"
-    else:
-        return f"results/mapped/{aligner}/{{sample}}.sorted.bam"
+def get_mapped_input(wildcards, bai=False):
+    ext = "bai" if bai else "bam"
+    return branch(
+        lookup(within=config, dpath="ref/pangenome/activate"),
+        then=f"<results_mapped>/{{sample}}.{ext}",
+        otherwise=f"<results_mapped>/{{sample}}.{ext}",
+    )
 
 
 def get_recalibrate_quality_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
-    # Post-processing of DNA samples
-    if is_activated("calc_consensus_reads"):
-        return "results/consensus/{{sample}}.{ext}".format(ext=ext)
-    else:
-        return get_consensus_input(wildcards, bai)
+    return branch(
+        lookup(within=config, dpath="calc_consensus_reads/activate"),
+        then=f"<results_consensus>/{{sample}}.{ext}",
+        otherwise=get_consensus_input(wildcards, bai),
+    )
 
 
 def get_consensus_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     if sample_has_primers(wildcards):
-        return f"results/trimmed/{{sample}}.trimmed.{ext}"
-    else:
-        return get_trimming_input(wildcards, bai)
+        return f"<results_trimmed>/{{sample}}.{ext}"
+    return get_trimming_input(wildcards, bai)
 
 
 def get_trimming_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
-    aligner = get_aligner(wildcards)
-    if is_activated("remove_duplicates"):
-        return "results/dedup/{{sample}}.{ext}".format(ext=ext)
-    else:
-        return "results/mapped/{aligner}/{{sample}}.sorted.{ext}".format(
-            aligner=aligner, ext=ext
-        )
-
-
-def get_primer_bed(wc):
-    if isinstance(primer_panels, pd.DataFrame):
-        if not pd.isna(primer_panels.loc[wc.panel, "fa2"]):
-            return "results/primers/{}_primers.bedpe".format(wc.panel)
-        else:
-            return "results/primers/{}_primers.bed".format(wc.panel)
-    else:
-        if config["primers"]["trimming"].get("primers_fa2", ""):
-            return "results/primers/uniform_primers.bedpe"
-        else:
-            return "results/primers/uniform_primers.bed"
+    return branch(
+        lookup(within=config, dpath="remove_duplicates/activate"),
+        then=f"<results_dedup>/{{sample}}.{ext}",
+        otherwise=get_mapped_input(wildcards, bai),
+    )
 
 
 def extract_unique_sample_column_value(sample, col_name):
@@ -309,36 +336,27 @@ def get_panel_primer_input(panel):
         return panel["fa1"]
 
 
-def get_primer_regions(wc):
-    if isinstance(primer_panels, pd.DataFrame):
-        panel = extract_unique_sample_column_value(wc.sample, "panel")
-        return f"results/primers/{panel}_primer_regions.tsv"
-    return "results/primers/uniform_primer_regions.tsv"
+get_primer_regions = branch(
+    isinstance(primer_panels, pd.DataFrame),
+    then=lambda wc: f"<results>/primers/{extract_unique_sample_column_value(wc.sample, 'panel')}_primer_regions.tsv",
+    otherwise="<results>/primers/uniform_primer_regions.tsv",
+)
 
 
-def get_markduplicates_extra(wc):
+def get_markduplicates_extra(wildcards):
     c = config["params"]["picard"]["MarkDuplicates"]
 
-    if sample_has_umis(wc.sample):
+    if sample_has_umis(wildcards):
         b = "--BARCODE_TAG BX"
     else:
         b = ""
 
-    if is_activated("calc_consensus_reads"):
+    if lookup(within=config, dpath="calc_consensus_reads/activate"):
         d = "--TAG_DUPLICATE_SET_MEMBERS true"
     else:
         d = ""
 
     return f"{c} {b} {d}"
-
-
-def get_processed_consensus_input(wildcards):
-    if wildcards.read_type == "se":
-        return "results/consensus/fastq/{}.se.fq".format(wildcards.sample)
-    return [
-        "results/consensus/fastq/{}.1.fq".format(wildcards.sample),
-        "results/consensus/fastq/{}.2.fq".format(wildcards.sample),
-    ]
 
 
 def get_read_group(prefix: str):
@@ -350,31 +368,6 @@ def get_read_group(prefix: str):
         )
 
     return inner
-
-
-def get_tabix_params(wildcards):
-    if wildcards.format == "vcf":
-        return "-p vcf"
-    if wildcards.format == "txt":
-        return "-s 1 -b 2 -e 2"
-    raise ValueError("Invalid format for tabix: {}".format(wildcards.format))
-
-
-def get_trimmed_fastqs(wc):
-    if units.loc[wc.sample, "adapters"].notna().all():
-        return expand(
-            "results/trimmed/{sample}/{unit}_{read}.fastq.gz",
-            unit=units.loc[wc.sample, "unit_name"],
-            sample=wc.sample,
-            read=wc.read,
-        )
-    else:
-        fq = "fq1" if wc.read == "R1" or wc.read == "single" else "fq2"
-        return [
-            read
-            for unit in units.loc[wc.sample, "unit_name"]
-            for read in get_raw_reads(wc.sample, unit, fq)
-        ]
 
 
 def sample_has_primers(wildcards):
@@ -392,8 +385,15 @@ def sample_has_primers(wildcards):
     return False
 
 
-def sample_has_umis(sample):
-    return pd.notna(extract_unique_sample_column_value(sample, "umi_read"))
+def sample_has_umis(wildcards):
+    return pd.notna(extract_unique_sample_column_value(wildcards.sample, "umi_read"))
+
+
+get_fastp_extra = branch(
+    sample_has_umis,
+    then=lambda wc: config["params"]["fastp"] + get_annotate_umis_params(wc),
+    otherwise=lambda wc: config["params"]["fastp"],
+)
 
 
 def get_annotate_umis_params(wildcards):
@@ -404,18 +404,6 @@ def get_annotate_umis_params(wildcards):
         ],
         umi_len=str(extract_unique_sample_column_value(wildcards.sample, "umi_len")),
     )
-
-
-def get_filter_params(wc):
-    if isinstance(get_panel_primer_input(wc.panel), list):
-        return "-b -F 12"
-    return "-b -F 4"
-
-
-def get_single_primer_flag(wc):
-    if not isinstance(get_sample_primer_fastas(wc.sample), list):
-        return "--first-of-pair"
-    return ""
 
 
 def get_shortest_primer_length(primers):
@@ -431,8 +419,8 @@ def get_shortest_primer_length(primers):
     return min_length
 
 
-def get_primer_extra(wc, input):
-    extra = rf"-R '@RG\tID:{wc.panel}\tSM:{wc.panel}' -L 100"
+def get_primer_extra(wildcards, input):
+    extra = rf"-R '@RG\tID:{wildcards.panel}\tSM:{wildcards.panel}' -L 100"
     min_primer_len = get_shortest_primer_length(input.reads)
     # Check if shortest primer is below default values
     if min_primer_len < 32:

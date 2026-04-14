@@ -1,6 +1,6 @@
 from snakemake.utils import min_version
 
-min_version("9.1.0")
+min_version("9.12.0")
 
 
 # load configuration
@@ -16,9 +16,31 @@ inputflags:
 container: "docker://continuumio/miniconda3"
 
 
-# load rules
+# load helpers first
 # -----------------------------------------------------
 include: "rules/common.smk"
+
+
+# config-driven pathvars for candidate final BAM stages
+# -----------------------------------------------------
+pathvars:
+    results_bqsr=branch(bqsr_is_final(), then=final_bam_path, otherwise="results/recal"),
+    results_consensus=branch(
+        consensus_is_final(), then=final_bam_path, otherwise="results/consensus"
+    ),
+    results_trimmed=branch(
+        trimmed_is_final(), then=final_bam_path, otherwise="results/trimmed"
+    ),
+    results_dedup=branch(
+        dedup_is_final(), then=final_bam_path, otherwise="results/dedup"
+    ),
+    results_mapped=branch(
+        mapping_is_final(), then=final_bam_path, otherwise="results/mapped"
+    ),
+
+
+# load rules
+# -----------------------------------------------------
 include: "rules/utils.smk"
 include: "rules/ref.smk"
 include: "rules/trimming.smk"
@@ -41,6 +63,6 @@ onerror:
 
 
 rule all:
-    input:
-        expand("results/recal/{sample}.bam", sample=list(samples.index)),
     default_target: True
+    input:
+        expand(f"{final_bam_path}/{{sample}}.bam", sample=list(samples.index)),
