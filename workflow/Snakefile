@@ -34,11 +34,8 @@ pathvars:
     results_dedup=branch(
         dedup_is_final(), then=final_bam_path, otherwise="results/dedup"
     ),
-    results_mapped_bwa=branch(
-        bwa_mapping_is_final(), then=final_bam_path, otherwise="results/mapped/bwa"
-    ),
-    results_mapped_vg=branch(
-        vg_mapping_is_final(), then=final_bam_path, otherwise="results/mapped/vg"
+    results_mapped=branch(
+        mapping_is_final(), then=final_bam_path, otherwise="results/mapped"
     ),
 
 

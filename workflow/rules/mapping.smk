@@ -3,7 +3,7 @@ rule map_reads_bwa:
         reads=get_map_reads_input,
         idx=access.random(rules.bwa_index.output),
     output:
-        temp("<results>/mapped/bwa/{sample}.raw.bam"),
+        temp("<results>/mapped/bwa/{sample}.bam"),
     log:
         "<logs>/bwa_mem/{sample}.log",
     threads: 8
@@ -119,11 +119,7 @@ rule add_read_group:
             otherwise="<results>/mapped/vg/{sample}.reheadered.bam",
         ),
     output:
-        branch(
-            vg_mapping_is_final(),
-            then="<results_mapped_vg>/{sample}.bam",
-            otherwise=temp("<results_mapped_vg>/{sample}.bam"),
-        ),
+        temp("<results>/mapped/vg/{sample}.bam"),
     log:
         "<logs>/samtools/add_rg/{sample}.log",
     conda:
@@ -138,13 +134,13 @@ rule add_read_group:
 
 rule sort_alignments:
     input:
-        "<results>/mapped/bwa/{sample}.raw.bam",
-    output:
         branch(
-            bwa_mapping_is_final(),
-            then="<results_mapped_bwa>/{sample}.bam",
-            otherwise=temp("<results_mapped_bwa>/{sample}.bam"),
+            get_aligner == "vg",
+            then="<results>/mapped/vg/{sample}.bam",
+            otherwise="<results>/mapped/bwa/{sample}.bam",
         ),
+    output:
+        "<results_mapped>/{sample}.bam",
     log:
         "<logs>/sort/bwa/{sample}.log",
     threads: 16
@@ -156,8 +152,8 @@ rule sort_alignments:
 
 rule annotate_umis:
     input:
-        bam=get_mapped_stage_input,
-        idx=lambda wc: get_mapped_stage_input(wc, bai=True),
+        bam=get_mapped_input,
+        idx=lambda wc: get_mapped_input(wc, bai=True),
     output:
         temp(
             "<results>/mapped/{aligner}/{{sample}}.annotated.bam".format(
@@ -179,7 +175,7 @@ rule mark_duplicates:
             then="<results>/mapped/{aligner}/{{sample}}.annotated.bam".format(
                 aligner=get_aligner
             ),
-            otherwise=get_mapped_stage_input,
+            otherwise=get_mapped_input,
         ),
     output:
         bam=branch(

@@ -127,34 +127,12 @@ def dedup_is_final():
     )
 
 
-def mapped_stage_is_final():
+def mapping_is_final():
     return (
         not dedup_is_final()
         and not trimmed_is_final()
         and not consensus_is_final()
         and not bqsr_is_final()
-    )
-
-
-def bwa_mapping_is_final():
-    return (
-        not lookup(
-            within=config,
-            dpath="ref/pangenome/activate",
-            default=False,
-        )
-        and mapped_stage_is_final()
-    )
-
-
-def vg_mapping_is_final():
-    return (
-        lookup(
-            within=config,
-            dpath="ref/pangenome/activate",
-            default=False,
-        )
-        and mapped_stage_is_final()
     )
 
 
@@ -274,12 +252,12 @@ get_map_reads_input = branch(
 )
 
 
-def get_mapped_stage_input(wildcards, bai=False):
+def get_mapped_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
     return branch(
         lookup(within=config, dpath="ref/pangenome/activate"),
-        then=f"<results_mapped_vg>/{{sample}}.{ext}",
-        otherwise=f"<results_mapped_bwa>/{{sample}}.{ext}",
+        then=f"<results_mapped>/{{sample}}.{ext}",
+        otherwise=f"<results_mapped/{{sample}}.{ext}",
     )
 
 
@@ -304,7 +282,7 @@ def get_trimming_input(wildcards, bai=False):
     return branch(
         lookup(within=config, dpath="remove_duplicates/activate"),
         then=f"<results_dedup>/{{sample}}.{ext}",
-        otherwise=get_mapped_stage_input(wildcards, bai),
+        otherwise=get_mapped_input(wildcards, bai),
     )
 
 
