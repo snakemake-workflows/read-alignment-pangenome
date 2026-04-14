@@ -257,7 +257,7 @@ def get_mapped_input(wildcards, bai=False):
     return branch(
         lookup(within=config, dpath="ref/pangenome/activate"),
         then=f"<results_mapped>/{{sample}}.{ext}",
-        otherwise=f"<results_mapped/{{sample}}.{ext}",
+        otherwise=f"<results_mapped>/{{sample}}.{ext}",
     )
 
 
