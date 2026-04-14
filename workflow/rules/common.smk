@@ -82,13 +82,6 @@ primer_panels = (
 )
 
 
-def is_activated(xpath):
-    c = config
-    for entry in xpath.split("/"):
-        c = c.get(entry, {})
-    return bool(c.get("activate", False))
-
-
 def bqsr_is_final():
     return lookup(
         within=config,
@@ -166,7 +159,7 @@ def vg_mapping_is_final():
 
 
 get_aligner = branch(
-    is_activated("ref/pangenome"),
+    lookup(within=config, dpath="ref/pangenome/activate"),
     then="vg",
     otherwise="bwa",
 )
@@ -283,16 +276,20 @@ get_map_reads_input = branch(
 
 def get_mapped_stage_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
-    if is_activated("ref/pangenome"):
-        return f"<results_mapped_vg>/{{sample}}.{ext}"
-    return f"<results_mapped_bwa>/{{sample}}.{ext}"
+    return branch(
+        lookup(within=config, dpath="ref/pangenome/activate"),
+        then=f"<results_mapped_vg>/{{sample}}.{ext}",
+        otherwise=f"<results_mapped_bwa>/{{sample}}.{ext}",
+    )
 
 
 def get_recalibrate_quality_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
-    if is_activated("calc_consensus_reads"):
-        return f"<results_consensus>/{{sample}}.{ext}"
-    return get_consensus_input(wildcards, bai)
+    return branch(
+        lookup(within=config, dpath="calc_consensus_reads/activate"),
+        then=f"<results_consensus>/{{sample}}.{ext}",
+        otherwise=get_consensus_input(wildcards, bai),
+    )
 
 
 def get_consensus_input(wildcards, bai=False):
@@ -304,9 +301,11 @@ def get_consensus_input(wildcards, bai=False):
 
 def get_trimming_input(wildcards, bai=False):
     ext = "bai" if bai else "bam"
-    if is_activated("remove_duplicates"):
-        return f"<results_dedup>/{{sample}}.{ext}"
-    return get_mapped_stage_input(wildcards, bai)
+    return branch(
+        lookup(within=config, dpath="remove_duplicates/activate"),
+        then=f"<results_dedup>/{{sample}}.{ext}",
+        otherwise=get_mapped_stage_input(wildcards, bai),
+    )
 
 
 def extract_unique_sample_column_value(sample, col_name):
@@ -374,7 +373,7 @@ def get_markduplicates_extra(wildcards):
     else:
         b = ""
 
-    if is_activated("calc_consensus_reads"):
+    if lookup(within=config, dpath="calc_consensus_reads/activate"):
         d = "--TAG_DUPLICATE_SET_MEMBERS true"
     else:
         d = ""
